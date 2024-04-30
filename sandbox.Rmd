@@ -1,0 +1,74 @@
+```{r}
+rm(list = ls())
+
+library(tidyverse)
+library(here)
+library(janitor)
+library(readxl)
+
+# Load the dataset in data folder: coral_raw_wide_2024.xlsx
+
+coral_df <- read_excel(here("data", "coral_raw_wide_2024.xlsx")) %>% 
+  clean_names()
+
+coral_df_long_2019 <- read_csv(here("data", "coral_raw_long_2019.csv")) %>% 
+  clean_names()
+
+# LTER1BR_Dyn_finishedX <- read_excel(here("data", "LTER1BR_Dyn_finishedX.xlsx")) %>% 
+#   clean_names()
+# 
+# LTER1OR_Dyn_finishedX <- read_excel(here("data", "LTER1OR_Dyn_finishedX.xlsx")) %>% 
+#   clean_names()
+
+
+```
+
+Eventually I may wish to use length and width data along with positions to guess which corals have fissioned or fused into which new corals. (First off should understand from Hunter and Mohsen if this is important or interesting)
+```{r}
+# Make a plot showing relationship between width and length fields in coral_df_long_2019
+# also graph a y = x line
+ggplot(coral_df_long_2019, aes(x = width, y = length, color = taxa)) +
+  geom_point(size = 0.5, alpha = 0.5) +
+  labs(title = "Relationship between width and length of corals",
+       x = "Width",
+       y = "Length") +
+  geom_abline(intercept = 0, slope = 1)
+```
+
+The note fields can be quite useful
+```{r}
+# For coral_df, get all the column names that begin with "note". 
+# Get the distinct values across all of these columns.
+# make all lowercase.
+# remove any "\"" escape characters
+note_vals <- coral_df %>% 
+  select(starts_with("note")) %>% 
+  gather() %>% 
+  distinct() %>% 
+  pull() %>%
+  tolower() %>%
+  str_replace_all("\"", "")
+
+# Some of these values are actually multiple values separated by commas
+# extract these values and consider them separately
+note_vals <- note_vals %>% 
+  str_split(",") %>% 
+  unlist() %>% 
+  str_trim() %>% 
+  unique()
+
+# Get all the values thath start with "fu"
+# consolidate anything that is the pattern "fu1, fu2, fu3, ..." into just "fuX"
+note_vals %>% 
+  str_subset("^fu") %>%
+  str_replace_all("fu[0-9]+", "fuX") %>% 
+  unique()
+
+# Get all values that start with "fi"
+note_vals %>% 
+  str_subset("^fi") %>% 
+  str_replace_all("fi[0-9]+", "fiX") %>% 
+  unique()
+
+```
+
