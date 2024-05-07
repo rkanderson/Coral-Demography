@@ -1,0 +1,136 @@
+
+
+```{r}
+# Clean env
+rm(list = ls())
+
+# Load necessary libraries
+library(tidyverse)
+library(here)
+library(janitor)
+library(readxl)
+
+# Load coral data from excel file
+coral_df_raw <- read_excel(here("data", "coral_raw_wide_2024.xlsx")) %>% 
+  clean_names()
+
+```
+
+## Tidying Data
+
+There are a lot of columns we don't need
+```{r}
+# First, we only want to select the columns we're interested in:
+# site, habitat, transect, taxa, x, y, z, lYYYY, wYYY, hYYYY, obsYYYY, note_YYYY, note_YYYY_extra
+# Make sure that for the column names with years, the exact format is followed.
+# We'll also add a coral_number field for each row of the raw data frame, just so we can track each coral by its distinct identity
+coral_df <- coral_df_raw %>% 
+  mutate(coral_number = row_number()) %>%
+  select(coral_number, site, habitat, transect, taxa, x, y, z, 
+         matches("l[0-9]{4}"), 
+         matches("w[0-9]{4}"), 
+         matches("h[0-9]{4}"), 
+         matches("obs[0-9]{4}"), 
+         matches("note_[0-9]{4}"), 
+         matches("note_[0-9]{4}_extra"))
+
+# Because it'll make things a little easier down the line, let's get the note_YYYY_extra columns to instead use the format note_extra_YYYY (ensuring that the col name ends in a year)
+coral_df <- coral_df %>% 
+  rename_with(~str_replace(., "note_([0-9]{4})_extra", "note_extra_\\1"), matches("note_[0-9]{4}_extra"))
+
+```
+
+
+
+
+There are two note columns, note_YYYY and note_YYYY_extra. Later we'll deal with aggregating these two.
+
+Let's tidy this data. We'll want to have a year column. We'll also want to have a column for each of length, width, height, observer, and note. 
+
+```{r}
+
+# First convert anything numeric to be a string to avoid type conflicts
+coral_df <- coral_df %>% 
+  mutate(across(where(is.numeric), as.character))
+
+coral_df_tidy <- coral_df %>%
+  pivot_longer(cols = matches("^l\\d{4}$|^w\\d{4}$|^h\\d{4}$|^obs\\d{4}$|^note_\\d{4}$|^note_extra_\\d{4}$"), 
+               names_to = "key", 
+               values_to = "value") %>%
+  mutate(year = str_extract(key, "\\d{4}"))
+
+# Trim off the year from every thing in the key column (including the underscore that sometimes precedes dates)
+coral_df_tidy <- coral_df_tidy %>% 
+  mutate(key = str_remove(key, "_*\\d{4}"))
+
+# Now pivot wider to get the columns we want
+coral_df_tidy <- coral_df_tidy %>%
+  pivot_wider(names_from = key, values_from = value) %>%
+  rename(length = l, width = w, height = h, observer = obs)
+```
+
+So we aren't getting any list-cols! That's good.
+
+Now the last thing we need to do is convert the fields x, y, z, year, length, width, height to be properly numeric again.
+
+```{r}
+coral_df_tidy <- coral_df_tidy %>%
+  mutate_at(vars(x, y, z, year, length, width, height), as.numeric)
+```
+
+
+
+## Growth dynamic
+
+On any given observation, we will say that a coral colony has grown if any of its dimensions are greater than the last time it was measured.
+
+
+## Fission and Fusion
+
+Now let's try seeing all the values that are getting displayed in the note column and note_extra columns
+
+
+```{r}
+note_vals <- coral_df_tidy %>% 
+  select(starts_with("note")) %>% 
+  gather() %>% 
+  distinct() %>% 
+  pull() %>%
+  tolower() %>%
+  str_replace_all("\"", "")
+
+# Some of these values are actually multiple values separated by commas
+# extract these values and consider them separately
+note_vals <- note_vals %>% 
+  str_split(",") %>% 
+  unlist() %>% 
+  str_trim() %>% 
+  unique()
+
+# Get all the values thath start with "fu"
+# consolidate anything that is the pattern "fu1, fu2, fu3, ..." into just "fuX"
+note_vals %>% 
+  str_subset("^fu") %>%
+  str_replace_all("fu[0-9]+", "fuX") %>% 
+  unique()
+
+# Get all values that start with "fi"
+note_vals %>% 
+  str_subset("^fi") %>% 
+  str_replace_all("fi[0-9]+", "fiX") %>% 
+  unique()
+
+```
+So we can tentatively say that we can capture all the fission related notes by doing the following.
+After tokenizing a note or note_extra value by splicing along commas anda converting to lowercase, we can use the following criteria:
+
+**Fusion**
+- if the token itself EQUALS 'fuX', 'fusX', 'fuX-ed' where X consists of zero or more digits
+- if the token itself contains the word "fused" or "fusion"
+
+**Fission**
+- if the token itself EQUALS 'fiX' or 'fisX' where consists of zero or more digits
+- if the token contains the word 'fission'
+
+
+
