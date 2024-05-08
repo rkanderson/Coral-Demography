@@ -23,8 +23,16 @@ coral_df_tidy <- read_csv(here("data", "coral_tidy_2024.csv"))
 # we'll have a temporary field called notes_extracted that will hold the individual tokenized notes as a list
 
 # To extract the notes, take the column note and note_extra, splice each along commas and semicolons, trim, and convert to lowercase. Combine the lists from note and note_extra to get the value for notes_extracted
+
+
+# coral_df_tidy <- coral_df_tidy %>% 
+#   mutate(notes_extracted = map2(note, note_extra, ~c(strsplit(tolower(.x), "[,;]")[[1]], strsplit(tolower(.y), "[,;]")[[1]])))
+
+# Rewrite, but also use str_trim
 coral_df_tidy <- coral_df_tidy %>% 
-  mutate(notes_extracted = map2(note, note_extra, ~c(strsplit(tolower(.x), "[,;]")[[1]], strsplit(tolower(.y), "[,;]")[[1]])))
+  mutate(notes_extracted = map2(note, note_extra, ~c(strsplit(tolower(.x), "[,;]")[[1]], strsplit(tolower(.y), "[,;]")[[1]]))) %>% 
+  mutate(notes_extracted = map(notes_extracted, ~str_trim(.x)))
+
 
 ```
 
@@ -73,21 +81,34 @@ We know that fusion ocurred at an observation
 
 In the first case, the string of digits X should be saved in a field called fusion_group
 
+
 ```{r}
+# Just to debug, I'm isolating a special case coral_num = 906, and year = 2016
+# coral_df_tidy <- coral_df_tidy %>% 
+#   filter(coral_number == 906, year == 2016)
+```
+
+
+```{r}
+# Start by initializing empty columns fusion and fusion_group
+coral_df_tidy <- coral_df_tidy %>% 
+  mutate(fusion = 0, fusion_group = NA)
+
 for(i in 1:nrow(coral_df_tidy)) {
   notes <- coral_df_tidy$notes_extracted[[i]]
   
   # Iterate through all values in notes
   for (note in notes) {
-    if (grepl("fu[0-9]*", note) || 
-        grepl("fus[0-9]*", note) || 
-        grepl("fu[0-9]*-ed", note)) {
+    # print(paste("Note is ", note))
+    if (grepl("^fu[0-9]*$", note) || 
+        grepl("^fus[0-9]*$", note) || 
+        grepl("^fu[0-9]*-ed$", note)) {
       # This is the ideal case where we have a fuX or fusX or fuX-ed.
       # We'll be able to extract a fusion_group number from this format
       coral_df_tidy$fusion[i] <- 1
       # fusion_group <- str_extract(note, "fu([0-9]*)|fus([0-9]*)", group = 1)
       # # TODO check if group=1 applies for both.
-      fus_group <- str_extract(note, "fu([0-9]*)|fus([0-9]*)", group = 1)
+      fus_group <- str_extract(note, "^fus?([0-9]*)(-ed)?$", group = 1)
       coral_df_tidy$fusion_group[i] <- as.numeric(fus_group)
     } else if(grepl("fused", note) || grepl("fusion", note)) {
       # It's possible that we'll get these sorts of notes, but we shouldn't
@@ -97,7 +118,7 @@ for(i in 1:nrow(coral_df_tidy)) {
         next
       }
       coral_df_tidy$fusion[i] <- 1
-      coral_dif_tidy$fusion_group[i] <- NA
+      coral_df_tidy$fusion_group[i] <- NA
     }
   }
   
@@ -110,6 +131,50 @@ for(i in 1:nrow(coral_df_tidy)) {
 
 ```
 
+
+### Fission
+This is similar to the fusion case, but with less possibilities
+We label fission as having ocurred if
+- if the token itself EQUALS 'fiX' or 'fisX' where consists of zero or more digits
+- if the token contains the word 'fission'
+
+```{r}
+# Start by initializing empty columns fission and fission_group
+coral_df_tidy <- coral_df_tidy %>% 
+  mutate(fission = 0, fission_group = NA)
+
+for(i in 1:nrow(coral_df_tidy)) {
+  notes <- coral_df_tidy$notes_extracted[[i]]
+  
+  # Iterate through all values in notes
+  for (note in notes) {
+    if (grepl("^fis?[0-9]*$", note)) {
+      # This is the ideal case where we have a fiX or fisX.
+      # We'll be able to extract a fission_group number from this format
+      coral_df_tidy$fission[i] <- 1
+      fis_group <- str_extract(note, "^fis?([0-9]*)$", group = 1)
+      coral_df_tidy$fission_group[i] <- as.numeric(fis_group)
+    } else if(grepl("fission", note)) {
+      # It's possible that we'll get these sorts of notes, but we shouldn't
+      # overwrite any existing groups, that's why if fission has already been set
+      # we'll just leave it as is.
+      if(coral_df_tidy$fission[i] == 1) {
+        next
+      }
+      coral_df_tidy$fission[i] <- 1
+      coral_df_tidy$fission_group[i] <- NA
+    }
+  }
+  
+  # If no fission info has been set already, well set the default
+  # if(coral_df_tidy$fission[i] != 1) {
+  #   coral_df_tidy$fission[i] <- 0
+  #   coral_df_tidy$fission_group[i] <- NA
+  # }
+}
+
+
+```
 
 
 
