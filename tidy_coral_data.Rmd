@@ -79,58 +79,11 @@ coral_df_tidy <- coral_df_tidy %>%
 ```
 
 
-
-## Growth dynamic
-
-On any given observation, we will say that a coral colony has grown if any of its dimensions are greater than the last time it was measured.
-
-
-## Fission and Fusion
-
-Now let's try seeing all the values that are getting displayed in the note column and note_extra columns
-
+Let's store this data file so that we can use it later.
 
 ```{r}
-note_vals <- coral_df_tidy %>% 
-  select(starts_with("note")) %>% 
-  gather() %>% 
-  distinct() %>% 
-  pull() %>%
-  tolower() %>%
-  str_replace_all("\"", "")
-
-# Some of these values are actually multiple values separated by commas
-# extract these values and consider them separately
-note_vals <- note_vals %>% 
-  str_split(",") %>% 
-  unlist() %>% 
-  str_trim() %>% 
-  unique()
-
-# Get all the values thath start with "fu"
-# consolidate anything that is the pattern "fu1, fu2, fu3, ..." into just "fuX"
-note_vals %>% 
-  str_subset("^fu") %>%
-  str_replace_all("fu[0-9]+", "fuX") %>% 
-  unique()
-
-# Get all values that start with "fi"
-note_vals %>% 
-  str_subset("^fi") %>% 
-  str_replace_all("fi[0-9]+", "fiX") %>% 
-  unique()
-
+write_csv(coral_df_tidy, here("data", "coral_tidy_2024.csv"))
 ```
-So we can tentatively say that we can capture all the fission related notes by doing the following.
-After tokenizing a note or note_extra value by splicing along commas anda converting to lowercase, we can use the following criteria:
-
-**Fusion**
-- if the token itself EQUALS 'fuX', 'fusX', 'fuX-ed' where X consists of zero or more digits
-- if the token itself contains the word "fused" or "fusion"
-
-**Fission**
-- if the token itself EQUALS 'fiX' or 'fisX' where consists of zero or more digits
-- if the token contains the word 'fission'
 
 
 

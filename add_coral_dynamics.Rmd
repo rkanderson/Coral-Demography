@@ -1,0 +1,117 @@
+
+In this file, we're going to load the tidy data created in tidy_coral_data.Rmd and extract information from the note columns to populate new dynamic columns.
+
+The dynamic columns we'll make are death, recruitment, growth, fission, fusion, and f-group.
+
+## Setup
+```{r}
+# Clean workspace
+rm(list = ls())
+
+# Load necessary libraries
+library(tidyverse)
+library(here)
+library(janitor)
+
+# Load our tidy coral dataset
+coral_df_tidy <- read_csv(here("data", "coral_tidy_2024.csv"))
+```
+## Aggregating and tokenizing notes
+
+```{r}
+# Let's extract the note values for each observation and place them in a list in each column
+# we'll have a temporary field called notes_extracted that will hold the individual tokenized notes as a list
+
+# To extract the notes, take the column note and note_extra, splice each along commas and semicolons, trim, and convert to lowercase. Combine the lists from note and note_extra to get the value for notes_extracted
+coral_df_tidy <- coral_df_tidy %>% 
+  mutate(notes_extracted = map2(note, note_extra, ~c(strsplit(tolower(.x), "[,;]")[[1]], strsplit(tolower(.y), "[,;]")[[1]])))
+
+```
+
+## Parsing notes for dynamics
+
+### Death
+```{r}
+# If notes_extracted contains a "d", then set the new column "death" to 1. 
+# It should be 0 otherwise.
+coral_df_tidy <- coral_df_tidy %>% 
+  rowwise() %>%
+  mutate(death = ifelse("d" %in% unlist(notes_extracted), 1, 0)) %>%
+  ungroup()
+```
+
+### Growth
+```{r}
+# Same as above, but for the value g
+coral_df_tidy <- coral_df_tidy %>% 
+  rowwise() %>%
+  mutate(growth = ifelse("g" %in% unlist(notes_extracted), 1, 0)) %>%
+  ungroup()
+```
+
+
+### Recruitment
+```{r}
+# If notes_extracted contains "r", "(r)", "r-fr" then set the  new column 
+# recruitment to 1. It should be 0 otherwise
+# This is similar to the previous
+for (i in 1:nrow(coral_df_tidy)) {
+  note <- coral_df_tidy$notes_extracted[[i]]
+  if ("r" %in% note || "(r)" %in% note || "r-fr" %in% note) {
+    coral_df_tidy$recruitment[i] <- 1
+  } else {
+    coral_df_tidy$recruitment[i] <- 0
+  }
+}
+
+```
+
+### Fusion
+We know that fusion ocurred at an observation
+- if the token itself EQUALS 'fuX', 'fusX', 'fuX-ed' where X consists of zero or more digits
+- if the token itself contains the word "fused" or "fusion"
+
+In the first case, the string of digits X should be saved in a field called fusion_group
+
+```{r}
+for(i in 1:nrow(coral_df_tidy)) {
+  notes <- coral_df_tidy$notes_extracted[[i]]
+  
+  # Iterate through all values in notes
+  for (note in notes) {
+    if (grepl("fu[0-9]*", note) || 
+        grepl("fus[0-9]*", note) || 
+        grepl("fu[0-9]*-ed", note)) {
+      # This is the ideal case where we have a fuX or fusX or fuX-ed.
+      # We'll be able to extract a fusion_group number from this format
+      coral_df_tidy$fusion[i] <- 1
+      # fusion_group <- str_extract(note, "fu([0-9]*)|fus([0-9]*)", group = 1)
+      # # TODO check if group=1 applies for both.
+      fus_group <- str_extract(note, "fu([0-9]*)|fus([0-9]*)", group = 1)
+      coral_df_tidy$fusion_group[i] <- as.numeric(fus_group)
+    } else if(grepl("fused", note) || grepl("fusion", note)) {
+      # It's possible that we'll get these sorts of notes, but we shouldn't
+      # overwrite any existing groups, that's why if fusion has already been set
+      # we'll just leave it as is.
+      if(coral_df_tidy$fusion[i] == 1) {
+        next
+      }
+      coral_df_tidy$fusion[i] <- 1
+      coral_dif_tidy$fusion_group[i] <- NA
+    }
+  }
+  
+  # If no fusion info has been set already, well set the default
+  if(coral_df_tidy$fusion[i] != 1) {
+    coral_df_tidy$fusion[i] <- 0
+    coral_df_tidy$fusion_group[i] <- NA
+  }
+}
+
+```
+
+
+
+
+
+
