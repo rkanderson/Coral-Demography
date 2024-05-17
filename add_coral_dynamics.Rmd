@@ -40,6 +40,9 @@ coral_df_tidy <- coral_df_tidy %>%
 
 ### Death
 ```{r}
+# Initialize empty death column
+coral_df_tidy <- coral_df_tidy %>% mutate(death = 0)
+
 # If notes_extracted contains a "d", then set the new column "death" to 1. 
 # It should be 0 otherwise.
 coral_df_tidy <- coral_df_tidy %>% 
@@ -50,6 +53,9 @@ coral_df_tidy <- coral_df_tidy %>%
 
 ### Growth
 ```{r}
+# Initialize empty growth column
+coral_df_tidy <- coral_df_tidy %>% mutate(growth = 0)
+
 # Same as above, but for the value g
 coral_df_tidy <- coral_df_tidy %>% 
   rowwise() %>%
@@ -60,15 +66,15 @@ coral_df_tidy <- coral_df_tidy %>%
 
 ### Recruitment
 ```{r}
+# First initialize an empty recruitment column
+coral_df_tidy <- coral_df_tidy %>% mutate(recruitment = 0)
+
 # If notes_extracted contains "r", "(r)", "r-fr" then set the  new column 
 # recruitment to 1. It should be 0 otherwise
-# This is similar to the previous
 for (i in 1:nrow(coral_df_tidy)) {
   note <- coral_df_tidy$notes_extracted[[i]]
   if ("r" %in% note || "(r)" %in% note || "r-fr" %in% note) {
     coral_df_tidy$recruitment[i] <- 1
-  } else {
-    coral_df_tidy$recruitment[i] <- 0
   }
 }
 
@@ -80,13 +86,6 @@ We know that fusion ocurred at an observation
 - if the token itself contains the word "fused" or "fusion"
 
 In the first case, the string of digits X should be saved in a field called fusion_group
-
-
-```{r}
-# Just to debug, I'm isolating a special case coral_num = 906, and year = 2016
-# coral_df_tidy <- coral_df_tidy %>% 
-#   filter(coral_number == 906, year == 2016)
-```
 
 
 ```{r}
@@ -106,8 +105,6 @@ for(i in 1:nrow(coral_df_tidy)) {
       # This is the ideal case where we have a fuX or fusX or fuX-ed.
       # We'll be able to extract a fusion_group number from this format
       coral_df_tidy$fusion[i] <- 1
-      # fusion_group <- str_extract(note, "fu([0-9]*)|fus([0-9]*)", group = 1)
-      # # TODO check if group=1 applies for both.
       fus_group <- str_extract(note, "^fus?([0-9]*)(-ed)?$", group = 1)
       coral_df_tidy$fusion_group[i] <- as.numeric(fus_group)
     } else if(grepl("fused", note) || grepl("fusion", note)) {
@@ -120,12 +117,6 @@ for(i in 1:nrow(coral_df_tidy)) {
       coral_df_tidy$fusion[i] <- 1
       coral_df_tidy$fusion_group[i] <- NA
     }
-  }
-  
-  # If no fusion info has been set already, well set the default
-  if(coral_df_tidy$fusion[i] != 1) {
-    coral_df_tidy$fusion[i] <- 0
-    coral_df_tidy$fusion_group[i] <- NA
   }
 }
 
@@ -165,17 +156,19 @@ for(i in 1:nrow(coral_df_tidy)) {
       coral_df_tidy$fission_group[i] <- NA
     }
   }
-  
-  # If no fission info has been set already, well set the default
-  # if(coral_df_tidy$fission[i] != 1) {
-  #   coral_df_tidy$fission[i] <- 0
-  #   coral_df_tidy$fission_group[i] <- NA
-  # }
 }
 
 
 ```
 
+
+## Storage
+```{r}
+# remove the notes_extracted column, then save it as a csv
+# let's call it "coral_tidy_2024_with_dynamics.csv"
+coral_df_tidy <- coral_df_tidy %>% select(-notes_extracted) %>% 
+  write_csv(here("data", "coral_tidy_2024_with_dynamics.csv"))
+```
 
 
 
