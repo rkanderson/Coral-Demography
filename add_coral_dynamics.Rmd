@@ -152,6 +152,9 @@ for(i in 1:nrow(coral_df_tidy)) {
       if(coral_df_tidy$fission[i] == 1) {
         next
       }
+      
+      
+      
       coral_df_tidy$fission[i] <- 1
       coral_df_tidy$fission_group[i] <- NA
     }

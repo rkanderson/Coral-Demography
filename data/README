@@ -1,7 +1,12 @@
 # Regarding Data Files
 
-The file coral_raw_wide_2024.xlsx was originally called Demography_04_06_24_completed.xlsx
+The file coral_raw_wide_2024.xlsx was originally called Demography_04_06_24_completed.xlsx.
+Hunter emailed it to me as the main 'source' data file. Contained on its first page is all the coral surveys of interest on Mo'orea until the most recent year (2024 at the time of writing).
 
+There is a series of R markdown files that process this data file.
+- tidy_coral_data.Rmd Converts the wide data format into a tidy long format
+- add_coral_dynamics.Rmd Uses the dataset produced by tidy_coral_data.Rmd Parses the note fields to create dummy variable fields for dynamics of interest (recruitment, growth or size-change, mortality, fission, and fusion)
+- widen_coral_data.Rmd takes the tidy dataset with dynamics produced in add_coral_dynamics.Rmd and converts it back to the wide format that Mohsen prefers to work with. In this file, the dummy variables are also converted to a single 'dynamics' field.
 
-coral_raw_long_2019 was originally called MCR_LTER_Lenihan_mapped_corals_20220413 and was obtained from the following source
+coral_raw_long_2019 was originally called MCR_LTER_Lenihan_mapped_corals_20220413 and was obtained from the following source. It was used as an example in creating the wide format file.
 https://portal.edirepository.org/nis/mapbrowse?packageid=knb-lter-mcr.4009.5
