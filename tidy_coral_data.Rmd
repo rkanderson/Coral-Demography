@@ -29,14 +29,38 @@ COLUMN_LIMIT <- 100 # The maximum number of columns we'll need to load from each
 # The columns have significant overlap, but there might be some unique ones
 # among the individual sheets
 # Convert each sheet to be all string type to avoid type conflicts
-coral_df_raw <- sheets_habitats %>%
-  map(~read_excel(here("data", "coral_raw_wide_2024.xlsx"), sheet = .x, range = cell_cols(c(1,COLUMN_LIMIT)))) %>%
-  map(~mutate_all(., as.character)) %>%
-  map(~clean_names(.)) %>%
-  map( # Remove underscores from column names
-    ~rename_with(., ~str_remove(., "_"), everything())
-  ) %>%
+# coral_df_raw <- sheets_habitats %>%
+#   map(~read_excel(here("data", "coral_raw_wide_2024.xlsx"), 
+#                   sheet = .x, range = cell_cols(c(1,COLUMN_LIMIT)))
+#       ) %>%
+#   map(~mutate_all(., as.character)) %>%
+#   map(~clean_names(.)) %>%
+#   reduce(bind_rows)
+coral_habitats_raw_cleaned_names <- sheets_habitats %>%
+  map(~ read_excel(here("data", "coral_raw_wide_2024.xlsx"), 
+                   sheet = .x, range = cell_cols(c(1, COLUMN_LIMIT)))
+      ) %>%
+  map(~ mutate_all(., as.character)) %>%
+  map(~ clean_names(.)) %>%
+  map(~ rename_with(., ~ gsub("_", "", .)))
+
+coral_df_raw <- coral_habitats_raw_cleaned_names %>%
   reduce(bind_rows)
+
+# View all colnames for coral_habitats_raw_cleaned_names
+# filter so that they must start with 'obs'
+# coral_habitats_raw_cleaned_names %>% map(~colnames(.)) %>% map(~str_subset(.x, "^obs"))
+# coral_habitats_raw_cleaned_names %>% map(colnames)
+
+# For item 3 of coral_habitats_raw_cleaned_names,
+# get all distinct values of obs202263 and obs202264
+# do them separately
+# coral_habitats_raw_cleaned_names[[3]]$obs202263 %>% unique()
+# coral_habitats_raw_cleaned_names[[3]]$obs202264 %>% unique()
+
+  # map( # Remove underscores from column names
+  #   ~rename_with(., ~str_remove(., "_"), everything())
+  # ) %>%
 
 # coral_df_raw <- sheets_habitats %>% 
 #   map(~read_excel(here("data", "coral_raw_wide_2024.xlsx"), sheet = .x, range = cell_cols(c(1,90)))) %>%
@@ -73,30 +97,34 @@ coral_df <- coral_df_raw %>%
          matches("w[0-9]{4}"), 
          matches("h[0-9]{4}"), 
          matches("obs[0-9]{4}"), 
-         matches("note_[0-9]{4}"), 
-         matches("note_[0-9]{4}_extra"))
+         matches("note[0-9]{4}"), 
+         matches("note[0-9]{4}extra"))
 
-# Because it'll make things a little easier down the line, let's get the note_YYYY_extra columns to instead use the format note_extra_YYYY (ensuring that the col name ends in a year)
+# Get colnames of this new df
+colnames(coral_df)
+
+
+# Because it'll make things a little easier down the line, let's get the noteYYYYextra columns to instead use the format note_extraYYYY (ensuring that the col name ends in a year)
 coral_df <- coral_df %>% 
-  rename_with(~str_replace(., "note_([0-9]{4})_extra", "note_extra_\\1"), matches("note_[0-9]{4}_extra"))
+  rename_with(~str_replace(., "note([0-9]{4})extra", "note_extra\\1"), matches("note[0-9]{4}extra"))
 
 ```
 
 
 
 
-There are two note columns, note_YYYY and note_YYYY_extra. Later we'll deal with aggregating these two.
+There are two note columns the regual one and the 'extra' one.
 
 Let's tidy this data. We'll want to have a year column. We'll also want to have a column for each of length, width, height, observer, and note. 
 
 ```{r}
 
 # First convert anything numeric to be a string to avoid type conflicts
-coral_df <- coral_df %>% 
-  mutate(across(where(is.numeric), as.character))
+# coral_df <- coral_df %>% 
+#   mutate(across(where(is.numeric), as.character))
 
 coral_df_tidy <- coral_df %>%
-  pivot_longer(cols = matches("^l\\d{4}$|^w\\d{4}$|^h\\d{4}$|^obs\\d{4}$|^note_\\d{4}$|^note_extra_\\d{4}$"), 
+  pivot_longer(cols = matches("^l\\d{4}$|^w\\d{4}$|^h\\d{4}$|^obs\\d{4}$|^note\\d{4}$|^note_extra\\d{4}$"), 
                names_to = "key", 
                values_to = "value") %>%
   mutate(year = str_extract(key, "\\d{4}"))
