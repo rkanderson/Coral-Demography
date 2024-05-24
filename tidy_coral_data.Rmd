@@ -47,6 +47,11 @@ coral_habitats_raw_cleaned_names <- sheets_habitats %>%
 coral_df_raw <- coral_habitats_raw_cleaned_names %>%
   reduce(bind_rows)
 
+# To see where unique values are coming from, that may be weird
+# coral_habitats_raw_cleaned_names[[5]] %>% 
+#   select("site") %>% 
+#   map(~unique(.x))
+
 # View all colnames for coral_habitats_raw_cleaned_names
 # filter so that they must start with 'obs'
 # coral_habitats_raw_cleaned_names %>% map(~colnames(.)) %>% map(~str_subset(.x, "^obs"))
@@ -146,7 +151,51 @@ Now the last thing we need to do is convert the fields x, y, z, year, length, wi
 ```{r}
 coral_df_tidy <- coral_df_tidy %>%
   mutate_at(vars(x, y, z, year, length, width, height), as.numeric)
+# NAs will be introduced by this for string values, and that's ok.
 ```
+
+Furthermore, there are a lot of values that are meaningless strings like "NA", "Na" and "UK" (meaning "unknown"). We'll want to convert these to be actual NAs. These exist in the fields observer, note, and note_extra
+
+```{r}
+coral_df_tidy <- coral_df_tidy %>%
+  mutate_at(vars(observer, note, note_extra), ~na_if(., "NA")) %>%
+  mutate_at(vars(observer, note, note_extra), ~na_if(., "Na")) %>%
+  mutate_at(vars(observer, note, note_extra), ~na_if(., "UK"))
+```
+
+
+There are some discrete factor variables that may have different cases.
+- habitat should be set to all uppercase
+- taxa should be set to title case
+- observer should be set to upper case
+- site should be uppercase
+- transect should be uppercase
+
+```{r}
+coral_df_tidy <- coral_df_tidy %>%
+  mutate(habitat = toupper(habitat),
+         taxa = str_to_title(taxa),
+         observer = toupper(observer),
+         site = toupper(site),
+         transect = toupper(transect))
+```
+
+
+```{r}
+# Show distinct values for each non numeric field individually
+coral_df_tidy %>% 
+  select(where(is.character)) %>% 
+  map(~unique(.x))
+```
+
+```{r}
+# Curious, let's understand the data frames where unusual values for obs may be coming from
+# The weird values in observer: "5", "loose?", "A.globiceps"
+coral_df_tidy %>%
+  filter(observer %in% c("5", "loose?", "A.globiceps")) %>%
+  View()
+```
+
 
 
 Let's store this data file so that we can use it later.
