@@ -11,9 +11,51 @@ library(janitor)
 library(readxl)
 
 # Load coral data from excel file
-coral_df_raw <- read_excel(here("data", "coral_raw_wide_2024.xlsx")) %>% 
-  clean_names()
+# coral_df_raw <- read_excel(here("data", "coral_raw_wide_2024.xlsx")) %>% 
+#   clean_names()
+# ^ Commented out for the time-being, all our aggregated data is spread out through other sheets
+# We'll need to load all the data from these individual sheets and combine them with each other
+# in order to obtain a coral_df_raw
 
+# Get the column names of each sheet in the file that matches the pattern "LTERXAA"
+sheets_habitats <- excel_sheets(here("data", "coral_raw_wide_2024.xlsx")) %>% 
+  str_subset("^LTER[0-9]{1}[A-Z]{2}$")
+
+COLUMN_LIMIT <- 100 # The maximum number of columns we'll need to load from each sheet.
+                    # May need to be tweaked as dataset grows
+
+# Load each of the sheets and join them togethr
+# by stacking the datasets on top of each other.
+# The columns have significant overlap, but there might be some unique ones
+# among the individual sheets
+# Convert each sheet to be all string type to avoid type conflicts
+coral_df_raw <- sheets_habitats %>%
+  map(~read_excel(here("data", "coral_raw_wide_2024.xlsx"), sheet = .x, range = cell_cols(c(1,COLUMN_LIMIT)))) %>%
+  map(~mutate_all(., as.character)) %>%
+  map(~clean_names(.)) %>%
+  map( # Remove underscores from column names
+    ~rename_with(., ~str_remove(., "_"), everything())
+  ) %>%
+  reduce(bind_rows)
+
+# coral_df_raw <- sheets_habitats %>% 
+#   map(~read_excel(here("data", "coral_raw_wide_2024.xlsx"), sheet = .x, range = cell_cols(c(1,90)))) %>%
+#   map(~mutate_all(., as.character)) %>%
+#   map(~clean_names(.)) %>% 
+#   map( # Remove underscores from column names
+#     ~rename_with(., ~str_remove(., "_"), everything())
+#   )
+
+# Get col names of each element in coral_df_raw
+# coral_df_raw %>% map(~colnames(.))
+
+# do again, but get the name of each sheet alongside the columns
+# coral_df_raw %>% 
+#   map(~colnames(.)) %>% 
+#   map2(sheets_habitats, ~set_names(.x, .y))
+
+# sheets_habitats %>% 
+#   map(~read_excel(here("data", "coral_raw_wide_2024.xlsx"), sheet = .x) %>% colnames())
 ```
 
 ## Tidying Data

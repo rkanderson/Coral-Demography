@@ -23,6 +23,27 @@ coral_df_long_2019 <- read_csv(here("data", "coral_raw_long_2019.csv")) %>%
 
 ```
 
+I want to do a quick check on the column names of all the sheets in the file coral_raw_wide_2024.xlsx
+```{r}
+# Get the column names of each sheet in the file
+sheets <- excel_sheets(here("data", "coral_raw_wide_2024.xlsx"))
+# Get only the sheets that follow the regex pattern of "^LTERXYY$"
+# but X should be a digit, and YY should be 2 letters
+sheets_habitats <- sheets %>% 
+  str_subset("^LTER[0-9]{1}[A-Z]{2}$")
+
+# Get the column names of each sheet
+sheets_habitats %>% 
+  map(~read_excel(here("data", "coral_raw_wide_2024.xlsx"), sheet = .x) %>% colnames())
+
+# Check if they are identical
+sheets_habitats %>% 
+  map(~read_excel(here("data", "coral_raw_wide_2024.xlsx"), sheet = .x) %>% colnames()) %>% 
+  reduce(intersect)
+
+```
+
+
 Eventually I may wish to use length and width data along with positions to guess which corals have fissioned or fused into which new corals. (First off should understand from Hunter and Mohsen if this is important or interesting)
 ```{r}
 # Make a plot showing relationship between width and length fields in coral_df_long_2019
