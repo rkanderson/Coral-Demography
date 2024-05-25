@@ -173,8 +173,20 @@ coral_df_tidy <- coral_df_tidy %>%
 # growth should be 1 if growth_ratio is >1, 0 otherwise
 # shrinkage should be 1 if growth_ratio is <1, 0 otherwise
 coral_df_tidy <- coral_df_tidy %>% 
-  mutate(growth = ifelse(growth_ratio > 1, 1, 0),
-         shrinkage = ifelse(growth_ratio < 1, 1, 0))
+  mutate(growth = 0, shrinkage = 0)
+
+for(i in 1:nrow(coral_df_tidy)) {
+  # First make sure that growth_ratio is not NA. if it is, then next
+  if(is.na(coral_df_tidy$growth_ratio[i])) {
+    next
+  }
+  if (coral_df_tidy$growth_ratio[i] > 1) {
+    coral_df_tidy$growth[i] <- 1
+  } else if (coral_df_tidy$growth_ratio[i] < 1) {
+    coral_df_tidy$shrinkage[i] <- 1
+  }
+}
+
 ```
 
 ### Immigration & Emigration

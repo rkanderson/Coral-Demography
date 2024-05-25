@@ -15,38 +15,46 @@ coral_df <- read_csv(here("data", "coral_tidy_2024_with_dynamics.csv"))
 ## Create aggregated 'dynamic' field
 
 The fields 
-"death"         "growth"        "recruitment"  
- "fusion"        "fusion_group"  "fission"       "fission_group"
- are to be aggregated into a single dynamics field.
  
 ```{r}
 # Make empty dynamics field
 coral_df <- coral_df %>% mutate(dynamics = NA)
 
+# Each dynamic field has a name following the convention 'dyn_DYNAMICNAME'
+# 
 # Loop through each item in coral_df
 for(i in 1:nrow(coral_df)){
   # Initialize empty dynamics vector
   dyn <- c()
-  
-  if(coral_df$death[[i]] == 1) {
+
+  if(coral_df$dyn_death[[i]] == 1) {
     dyn <- append(dyn, "Death")
   }
-  if(coral_df$recruitment[[i]] == 1) {
+  if(coral_df$dyn_recruitment[[i]] == 1) {
     dyn <- append(dyn, "Recruitment")
   }
-  if(coral_df$growth[[i]] == 1) {
+  if(coral_df$dyn_growth[[i]] == 1) {
     dyn <- append(dyn, "Growth")
   }
-  if(coral_df$fission[[i]] == 1) {
+  if(coral_df$dyn_fission[[i]] == 1) {
     fis_group <- ifelse(is.na(coral_df$fission_group[[i]]), "", coral_df$fission_group[[i]])
     dyn <- append(dyn, paste0("Fission", fis_group))
   }
-  if(coral_df$fusion[[i]] == 1) {
+  if(coral_df$dyn_fusion[[i]] == 1) {
     fus_group <- ifelse(is.na(coral_df$fusion_group[[i]]), "", coral_df$fusion_group[[i]])
     dyn <- append(dyn, paste0("Fusion", fus_group))
   }
-  
-  # Collapse 
+  if(coral_df$dyn_immigration[[i]] == 1) {
+    dyn <- append(dyn, "Immigration")
+  }
+  if(coral_df$dyn_emigration[[i]] == 1) {
+    dyn <- append(dyn, "Emigration")
+  }
+  if(coral_df$dyn_edge[[i]] == 1) {
+    dyn <- append(dyn, "Edge")
+  }
+
+  # Collapse
   dyn_str <- paste(dyn, collapse = ", ")
   if(dyn_str != "") # Only write new data if string is non-empty (leave as NA otherwise)
     coral_df$dynamics[[i]] <- dyn_str
@@ -61,8 +69,8 @@ for(i in 1:nrow(coral_df)){
 First prepare the 'longer' format.
 This will consist of key-value-ifying the important columns that will be depend on each year, and appending the year to each of their names.
 ```{r}
-# Remove the dummy variables
-coral_df_longer <- coral_df %>% select(-death, -growth, -recruitment, -fusion, -fusion_group, -fission, -fission_group)
+# Remove the dummy variables (anything that starts with dyn_)
+coral_df_longer <- coral_df %>% select(-starts_with("dyn_"))
 
 year_index <- which(names(coral_df_longer) == "year")
 coral_df_longer <- coral_df_longer %>%  mutate(across((year_index+1):last_col(), as.character))
