@@ -48,8 +48,8 @@ coral_df_raw <- coral_habitats_raw_cleaned_names %>%
   reduce(bind_rows)
 
 # To see where unique values are coming from, that may be weird
-# coral_habitats_raw_cleaned_names[[5]] %>% 
-#   select("site") %>% 
+# coral_habitats_raw_cleaned_names[[5]] %>%
+#   select("site") %>%
 #   map(~unique(.x))
 
 # View all colnames for coral_habitats_raw_cleaned_names
@@ -184,8 +184,12 @@ coral_df_tidy <- coral_df_tidy %>%
 ```{r}
 # Show distinct values for each non numeric field individually
 coral_df_tidy %>% 
-  select(where(is.character)) %>% 
+  select(habitat, taxa, observer, site, transect) %>% 
   map(~unique(.x))
+```
+
+
+```{r}
 ```
 
 ```{r}
