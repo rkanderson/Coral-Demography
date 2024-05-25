@@ -12,9 +12,12 @@ rm(list = ls())
 library(tidyverse)
 library(here)
 library(janitor)
+library(tsibble)
 
 # Load our tidy coral dataset
-coral_df_tidy <- read_csv(here("data", "coral_tidy_2024.csv"))
+coral_df_tidy <- read_csv(here("data", "coral_tidy_2024.csv")) %>% 
+  as_tsibble(index = year, key=coral_number)
+
 ```
 ## Aggregating and tokenizing notes
 
@@ -48,18 +51,6 @@ coral_df_tidy <- coral_df_tidy %>% mutate(death = 0)
 coral_df_tidy <- coral_df_tidy %>% 
   rowwise() %>%
   mutate(death = ifelse("d" %in% unlist(notes_extracted), 1, 0)) %>%
-  ungroup()
-```
-
-### Growth
-```{r}
-# Initialize empty growth column
-coral_df_tidy <- coral_df_tidy %>% mutate(growth = 0)
-
-# Same as above, but for the value g
-coral_df_tidy <- coral_df_tidy %>% 
-  rowwise() %>%
-  mutate(growth = ifelse("g" %in% unlist(notes_extracted), 1, 0)) %>%
   ungroup()
 ```
 
@@ -164,6 +155,106 @@ for(i in 1:nrow(coral_df_tidy)) {
 
 ```
 
+### Growth & Shrinkage
+here we won't actually want to use the comments field, but rather the growth ratios, which we will need to compute
+```{r}
+# Compute growth_ratio field for each observation
+coral_df_tidy <- coral_df_tidy %>% 
+  group_by(coral_number) %>%
+  mutate(
+    sum_dims = length + width + height,  # Sum of current year's dimensions
+    prev_sum_dims = lag(sum_dims),  # Sum of previous year's dimensions
+    growth_ratio = sum_dims / prev_sum_dims  # Calculate the growth ratio
+  ) %>% 
+  select(-sum_dims, -prev_sum_dims) %>%
+  ungroup() 
+
+# Set the fields for growth and shrinkage
+# growth should be 1 if growth_ratio is >1, 0 otherwise
+# shrinkage should be 1 if growth_ratio is <1, 0 otherwise
+coral_df_tidy <- coral_df_tidy %>% 
+  mutate(growth = ifelse(growth_ratio > 1, 1, 0),
+         shrinkage = ifelse(growth_ratio < 1, 1, 0))
+```
+
+### Immigration & Emigration
+```{r}
+# Set immigration to 1 if notes_extracted starts with "im", 0 otherwise
+# Set emigration to 1 if notes_extracted starts with "em", 0 otherwise
+coral_df_tidy <- coral_df_tidy %>% 
+  mutate(immigration = 0, emigration = 0)
+
+for(i in 1:nrow(coral_df_tidy)) {
+  notes <- coral_df_tidy$notes_extracted[[i]]
+  
+  # Iterate through all values in notes
+  for (note in notes) {
+    if (grepl("^im", note)) {
+      coral_df_tidy$immigration[i] <- 1
+    }
+    if(grepl("^em", note)) {
+      coral_df_tidy$emigration[i] <- 1
+    }
+  }
+}
+```
+
+### Edge
+```{r}
+# Set edge to 1 if a note contains "edge", is equal to "(fu-)?ed",  0 otherwise
+coral_df_tidy <- coral_df_tidy %>% 
+  mutate(edge = 0)
+
+for(i in 1:nrow(coral_df_tidy)) {
+  notes <- coral_df_tidy$notes_extracted[[i]]
+  
+  # Iterate through all values in notes
+  for (note in notes) {
+    if (grepl("edge", note) || grepl("^(fu[0-9]*-)?ed$", note)) {
+      coral_df_tidy$edge[i] <- 1
+    }
+  }
+}
+```
+
+
+## Extra: Exploration
+
+This code block was used to explore the distinct values of notes for the purposes of parsing them into dynamics.
+```{r}
+# First let's explore the notes to see the types of values that exist
+# all_notes <- coral_df_tidy %>% 
+#   pull(notes_extracted) %>% 
+#   unlist() %>% 
+#   unique()
+# 
+# # In all_notes, what values start with "em" or "im"
+# all_notes %>%
+#    str_subset("edge")
+
+
+# filter out NAs
+# %>%
+#   filter(str_detect(., "immig|emig")) %>%
+
+```
+
+## Naming dynamics fields
+Because there are a lot of dynamics field, we'll want to rename them to preface them with dyn_ to make them easier to identify
+
+```{r}
+# Rename all dynamic fields to start with "dyn_"
+coral_df_tidy <- coral_df_tidy %>% 
+  rename(dyn_growth = growth,
+         dyn_shrinkage = shrinkage,
+         dyn_death = death,
+         dyn_recruitment = recruitment,
+         dyn_fission = fission,
+         dyn_fusion = fusion,
+         dyn_edge = edge,
+         dyn_immigration = immigration,
+         dyn_emigration = emigration)
+```
 
 ## Storage
 ```{r}
