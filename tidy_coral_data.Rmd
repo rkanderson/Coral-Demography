@@ -188,24 +188,25 @@ coral_df_tidy %>%
   map(~unique(.x))
 ```
 
+## Renaming Transects and Plots
+
+Right now P10 and P1 get placed right next to each other because it's alphabetical. I want to rename any one digit transects to have a leading zero.
 
 ```{r}
+coral_df_tidy_transect_renamed <- coral_df_tidy %>%
+  mutate(transect = str_replace(transect, "^([PT])([0-9])(_.*)?$", "\\10\\2\\3"))
+
+# coral_df_tidy_transect_renamed %>% 
+#   select(habitat, taxa, observer, site, transect) %>% 
+#   map(~unique(.x))
 ```
 
-```{r}
-# Curious, let's understand the data frames where unusual values for obs may be coming from
-# The weird values in observer: "5", "loose?", "A.globiceps"
-coral_df_tidy %>%
-  filter(observer %in% c("5", "loose?", "A.globiceps")) %>%
-  View()
-```
-
-
+## Storing
 
 Let's store this data file so that we can use it later.
 
 ```{r}
-write_csv(coral_df_tidy, here("data", "coral_tidy_2024.csv"))
+write_csv(coral_df_tidy_transect_renamed, here("data", "coral_tidy_2024.csv"))
 ```
 
 
