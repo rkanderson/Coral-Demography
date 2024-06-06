@@ -15,10 +15,16 @@ library(janitor)
 library(tsibble)
 
 # Load our tidy coral dataset
-coral_df_tidy <- read_csv(here("data", "coral_tidy_2024.csv")) %>% 
+coral_df_tidy <- read_csv(here("data", "coral_tidy_2024.csv"))
+
+# Convert to tsibble
+coral_ts <- coral_df_tidy %>% 
   as_tsibble(index = year, key=coral_number)
 
 ```
+
+
+
 ## Aggregating and tokenizing notes
 
 ```{r}
@@ -28,44 +34,67 @@ coral_df_tidy <- read_csv(here("data", "coral_tidy_2024.csv")) %>%
 # To extract the notes, take the column note and note_extra, splice each along commas and semicolons, trim, and convert to lowercase. Combine the lists from note and note_extra to get the value for notes_extracted
 
 
-# coral_df_tidy <- coral_df_tidy %>% 
+# coral_ts <- coral_ts %>% 
 #   mutate(notes_extracted = map2(note, note_extra, ~c(strsplit(tolower(.x), "[,;]")[[1]], strsplit(tolower(.y), "[,;]")[[1]])))
 
-# Rewrite, but also use str_trim
-coral_df_tidy <- coral_df_tidy %>% 
+coral_ts <- coral_ts %>% 
   mutate(notes_extracted = map2(note, note_extra, ~c(strsplit(tolower(.x), "[,;]")[[1]], strsplit(tolower(.y), "[,;]")[[1]]))) %>% 
   mutate(notes_extracted = map(notes_extracted, ~str_trim(.x)))
-
-
 ```
+
+```{r}
+# TEMP: Exploration of unique values in notes.
+# Get all the unique values of notes_extracted
+all_notes <- coral_ts %>%
+  filter(year >= 2019) %>%
+  pull(notes_extracted) %>%
+  unlist() %>%
+  unique()
+
+all_notes
+rm(all_notes)
+```
+
+
 
 ## Parsing notes for dynamics
 
 ### Death
 ```{r}
 # Initialize empty death column
-coral_df_tidy <- coral_df_tidy %>% mutate(death = 0)
+coral_ts <- coral_ts %>% mutate(death = 0)
 
 # If notes_extracted contains a "d", then set the new column "death" to 1. 
 # It should be 0 otherwise.
-coral_df_tidy <- coral_df_tidy %>% 
-  rowwise() %>%
-  mutate(death = ifelse("d" %in% unlist(notes_extracted), 1, 0)) %>%
-  ungroup()
+for (i in 1:nrow(coral_ts)) {
+  note <- coral_ts$notes_extracted[[i]]
+  if ("d" %in% note || "dead" %in% note) {
+    coral_ts$death[i] <- 1
+  }
+}
 ```
 
 
 ### Recruitment
 ```{r}
 # First initialize an empty recruitment column
-coral_df_tidy <- coral_df_tidy %>% mutate(recruitment = 0)
+coral_ts <- coral_ts %>% mutate(recruitment = 0)
 
-# If notes_extracted contains "r", "(r)", "r-fr" then set the  new column 
+# If notes_extracted contains "r", "(r)", "r-fr", "recruit" or "recruitment..."  then set the  new column 
 # recruitment to 1. It should be 0 otherwise
-for (i in 1:nrow(coral_df_tidy)) {
-  note <- coral_df_tidy$notes_extracted[[i]]
-  if ("r" %in% note || "(r)" %in% note || "r-fr" %in% note) {
-    coral_df_tidy$recruitment[i] <- 1
+for (i in 1:nrow(coral_ts)) {
+  notes <- coral_ts$notes_extracted[[i]]
+  for(note in notes) {
+    if(is.na(note)) {
+      next
+    }
+    if(note == "r" ||
+       note == "(r)" ||
+       note == "r-fr" ||
+       note == "recruit" ||
+       grepl("^recruitment", note)) {
+      coral_ts$recruitment[i] <- 1
+    }
   }
 }
 
@@ -81,11 +110,11 @@ In the first case, the string of digits X should be saved in a field called fusi
 
 ```{r}
 # Start by initializing empty columns fusion and fusion_group
-coral_df_tidy <- coral_df_tidy %>% 
+coral_ts <- coral_ts %>% 
   mutate(fusion = 0, fusion_group = NA)
 
-for(i in 1:nrow(coral_df_tidy)) {
-  notes <- coral_df_tidy$notes_extracted[[i]]
+for(i in 1:nrow(coral_ts)) {
+  notes <- coral_ts$notes_extracted[[i]]
   
   # Iterate through all values in notes
   for (note in notes) {
@@ -95,18 +124,18 @@ for(i in 1:nrow(coral_df_tidy)) {
         grepl("^fu[0-9]*-ed$", note)) {
       # This is the ideal case where we have a fuX or fusX or fuX-ed.
       # We'll be able to extract a fusion_group number from this format
-      coral_df_tidy$fusion[i] <- 1
+      coral_ts$fusion[i] <- 1
       fus_group <- str_extract(note, "^fus?([0-9]*)(-ed)?$", group = 1)
-      coral_df_tidy$fusion_group[i] <- as.numeric(fus_group)
+      coral_ts$fusion_group[i] <- as.numeric(fus_group)
     } else if(grepl("fused", note) || grepl("fusion", note)) {
       # It's possible that we'll get these sorts of notes, but we shouldn't
       # overwrite any existing groups, that's why if fusion has already been set
       # we'll just leave it as is.
-      if(coral_df_tidy$fusion[i] == 1) {
+      if(coral_ts$fusion[i] == 1) {
         next
       }
-      coral_df_tidy$fusion[i] <- 1
-      coral_df_tidy$fusion_group[i] <- NA
+      coral_ts$fusion[i] <- 1
+      coral_ts$fusion_group[i] <- NA
     }
   }
 }
@@ -122,32 +151,32 @@ We label fission as having ocurred if
 
 ```{r}
 # Start by initializing empty columns fission and fission_group
-coral_df_tidy <- coral_df_tidy %>% 
+coral_ts <- coral_ts %>% 
   mutate(fission = 0, fission_group = NA)
 
-for(i in 1:nrow(coral_df_tidy)) {
-  notes <- coral_df_tidy$notes_extracted[[i]]
+for(i in 1:nrow(coral_ts)) {
+  notes <- coral_ts$notes_extracted[[i]]
   
   # Iterate through all values in notes
   for (note in notes) {
     if (grepl("^fis?[0-9]*$", note)) {
       # This is the ideal case where we have a fiX or fisX.
       # We'll be able to extract a fission_group number from this format
-      coral_df_tidy$fission[i] <- 1
+      coral_ts$fission[i] <- 1
       fis_group <- str_extract(note, "^fis?([0-9]*)$", group = 1)
-      coral_df_tidy$fission_group[i] <- as.numeric(fis_group)
+      coral_ts$fission_group[i] <- as.numeric(fis_group)
     } else if(grepl("fission", note)) {
       # It's possible that we'll get these sorts of notes, but we shouldn't
       # overwrite any existing groups, that's why if fission has already been set
       # we'll just leave it as is.
-      if(coral_df_tidy$fission[i] == 1) {
+      if(coral_ts$fission[i] == 1) {
         next
       }
       
       
       
-      coral_df_tidy$fission[i] <- 1
-      coral_df_tidy$fission_group[i] <- NA
+      coral_ts$fission[i] <- 1
+      coral_ts$fission_group[i] <- NA
     }
   }
 }
@@ -159,7 +188,7 @@ for(i in 1:nrow(coral_df_tidy)) {
 here we won't actually want to use the comments field, but rather the growth ratios, which we will need to compute
 ```{r}
 # Compute growth_ratio field for each observation
-coral_df_tidy <- coral_df_tidy %>% 
+coral_ts <- coral_ts %>% 
   group_by(coral_number) %>%
   mutate(
     sum_dims = length + width + height,  # Sum of current year's dimensions
@@ -172,18 +201,18 @@ coral_df_tidy <- coral_df_tidy %>%
 # Set the fields for growth and shrinkage
 # growth should be 1 if growth_ratio is >1, 0 otherwise
 # shrinkage should be 1 if growth_ratio is <1, 0 otherwise
-coral_df_tidy <- coral_df_tidy %>% 
+coral_ts <- coral_ts %>% 
   mutate(growth = 0, shrinkage = 0)
 
-for(i in 1:nrow(coral_df_tidy)) {
+for(i in 1:nrow(coral_ts)) {
   # First make sure that growth_ratio is not NA. if it is, then next
-  if(is.na(coral_df_tidy$growth_ratio[i])) {
+  if(is.na(coral_ts$growth_ratio[i])) {
     next
   }
-  if (coral_df_tidy$growth_ratio[i] > 1) {
-    coral_df_tidy$growth[i] <- 1
-  } else if (coral_df_tidy$growth_ratio[i] < 1) {
-    coral_df_tidy$shrinkage[i] <- 1
+  if (coral_ts$growth_ratio[i] > 1) {
+    coral_ts$growth[i] <- 1
+  } else if (coral_ts$growth_ratio[i] < 1) {
+    coral_ts$shrinkage[i] <- 1
   }
 }
 
@@ -193,19 +222,19 @@ for(i in 1:nrow(coral_df_tidy)) {
 ```{r}
 # Set immigration to 1 if notes_extracted starts with "im", 0 otherwise
 # Set emigration to 1 if notes_extracted starts with "em", 0 otherwise
-coral_df_tidy <- coral_df_tidy %>% 
+coral_ts <- coral_ts %>% 
   mutate(immigration = 0, emigration = 0)
 
-for(i in 1:nrow(coral_df_tidy)) {
-  notes <- coral_df_tidy$notes_extracted[[i]]
+for(i in 1:nrow(coral_ts)) {
+  notes <- coral_ts$notes_extracted[[i]]
   
   # Iterate through all values in notes
   for (note in notes) {
     if (grepl("^im", note)) {
-      coral_df_tidy$immigration[i] <- 1
+      coral_ts$immigration[i] <- 1
     }
     if(grepl("^em", note)) {
-      coral_df_tidy$emigration[i] <- 1
+      coral_ts$emigration[i] <- 1
     }
   }
 }
@@ -214,16 +243,16 @@ for(i in 1:nrow(coral_df_tidy)) {
 ### Edge
 ```{r}
 # Set edge to 1 if a note contains "edge", is equal to "(fu-)?ed",  0 otherwise
-coral_df_tidy <- coral_df_tidy %>% 
+coral_ts <- coral_ts %>% 
   mutate(edge = 0)
 
-for(i in 1:nrow(coral_df_tidy)) {
-  notes <- coral_df_tidy$notes_extracted[[i]]
+for(i in 1:nrow(coral_ts)) {
+  notes <- coral_ts$notes_extracted[[i]]
   
   # Iterate through all values in notes
   for (note in notes) {
     if (grepl("edge", note) || grepl("^(fu[0-9]*-)?ed$", note)) {
-      coral_df_tidy$edge[i] <- 1
+      coral_ts$edge[i] <- 1
     }
   }
 }
@@ -235,7 +264,7 @@ for(i in 1:nrow(coral_df_tidy)) {
 This code block was used to explore the distinct values of notes for the purposes of parsing them into dynamics.
 ```{r}
 # First let's explore the notes to see the types of values that exist
-# all_notes <- coral_df_tidy %>% 
+# all_notes <- coral_ts %>% 
 #   pull(notes_extracted) %>% 
 #   unlist() %>% 
 #   unique()
@@ -256,7 +285,7 @@ Because there are a lot of dynamics field, we'll want to rename them to preface 
 
 ```{r}
 # Rename all dynamic fields to start with "dyn_"
-coral_df_tidy <- coral_df_tidy %>% 
+coral_ts <- coral_ts %>% 
   rename(dyn_growth = growth,
          dyn_shrinkage = shrinkage,
          dyn_death = death,
@@ -272,7 +301,7 @@ coral_df_tidy <- coral_df_tidy %>%
 ```{r}
 # remove the notes_extracted column, then save it as a csv
 # let's call it "coral_tidy_2024_with_dynamics.csv"
-coral_df_tidy <- coral_df_tidy %>% select(-notes_extracted) %>% 
+coral_ts <- coral_ts %>% select(-notes_extracted) %>% 
   write_csv(here("data", "coral_tidy_2024_with_dynamics.csv"))
 ```
 

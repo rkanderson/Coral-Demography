@@ -37,13 +37,8 @@ for(i in 1:nrow(coral_df)){
   if(coral_df$dyn_growth[[i]] == 1) {
     dyn <- append(dyn, "Growth")
   }
-  if(coral_df$dyn_fission[[i]] == 1) {
-    fis_group <- ifelse(is.na(coral_df$fission_group[[i]]), "", coral_df$fission_group[[i]])
-    dyn <- append(dyn, paste0("Fission", fis_group))
-  }
-  if(coral_df$dyn_fusion[[i]] == 1) {
-    fus_group <- ifelse(is.na(coral_df$fusion_group[[i]]), "", coral_df$fusion_group[[i]])
-    dyn <- append(dyn, paste0("Fusion", fus_group))
+  if(coral_df$dyn_shrinkage[[i]] == 1) {
+    dyn <- append(dyn, "Shrinkage")
   }
   if(coral_df$dyn_immigration[[i]] == 1) {
     dyn <- append(dyn, "Immigration")
@@ -54,6 +49,15 @@ for(i in 1:nrow(coral_df)){
   if(coral_df$dyn_edge[[i]] == 1) {
     dyn <- append(dyn, "Edge")
   }
+  if(coral_df$dyn_fission[[i]] == 1) {
+    fis_group <- ifelse(is.na(coral_df$fission_group[[i]]), "", coral_df$fission_group[[i]])
+    dyn <- append(dyn, paste0("Fission", fis_group))
+  }
+  if(coral_df$dyn_fusion[[i]] == 1) {
+    fus_group <- ifelse(is.na(coral_df$fusion_group[[i]]), "", coral_df$fusion_group[[i]])
+    dyn <- append(dyn, paste0("Fusion", fus_group))
+  }
+
 
   # Collapse
   dyn_str <- paste(dyn, collapse = ", ")
