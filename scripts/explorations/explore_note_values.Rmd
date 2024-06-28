@@ -1,0 +1,43 @@
+---
+---
+
+I'm creating this Rmd file specifically for the purpose of exploring the values that appear
+in the note columns of the coral dataset.
+
+I'll use the tidied dataset to do this exploration.
+
+```{r}
+# clean env
+rm(list = ls())
+
+# load libraries
+library(tidyverse)
+library(here)
+
+# Load tidy data
+coral_df_tidy <- read_csv(here("data", "coral_tidy_2024.csv"))
+
+```
+
+```{r}
+# Filter for values where year is at least 2019
+# Set to lower case
+unique_note_vals_2019_onwards <- coral_df_tidy %>%
+  filter(year >= 2019) %>% 
+  select(note, note_extra) %>% 
+  gather() %>% 
+  pull() %>% 
+  unique()
+```
+
+
+Let's explore all note values that would be indicative of death.
+```{r}
+# Grab anything that has the word dead
+
+
+
+
+```
+
+
