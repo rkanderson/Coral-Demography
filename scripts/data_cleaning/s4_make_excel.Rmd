@@ -1,0 +1,142 @@
+
+This file will be in charge of doing all the work needed to convert the widened cleaned data into a nice excel with all the needed bells and whistles that make viewing the results easier.
+
+This file will be in charge of adding conditional formatting rules (highlights)
+to the widened data. This is for the purpose of making the data easier to read.
+
+```{r}
+# Clean env
+rm(list=ls())
+
+# Load necessary libraries
+library(tidyverse)
+library(here)
+library(openxlsx)
+
+# Load data
+coral_clean_wide <- read_csv(here("data", "cleaning_outputs", "coral_clean_wide_2024.csv"))
+```
+
+## Create workbook and add sheets
+```{r}
+wb <- createWorkbook()
+
+# First will have a sheet that shows all the data collected in the study
+addWorksheet(wb, "ALL_SITES")
+writeData(wb, sheet = "ALL_SITES", x = coral_clean_wide)
+
+# Then we'll have individual sheets for each site and habitat
+site_habitat <- coral_clean_wide %>% select(site, habitat) %>% distinct()
+for(i in 1:nrow(site_habitat)){
+  site <- site_habitat$site[[i]]
+  habitat <- site_habitat$habitat[[i]]
+  sheet_name <- paste0(site, "_", habitat)
+  addWorksheet(wb, sheet_name)
+  writeData(wb, sheet = sheet_name, x = coral_clean_wide %>% filter(site == site_habitat$site[[i]], habitat == site_habitat$habitat[[i]]))
+}
+
+# Save the excel file (needed for collecting all the sheet names)
+saveWorkbook(wb, file = here("data", "cleaning_outputs", "coral_clean_wide_human-friendly.xlsx"), overwrite = TRUE)
+
+# Get all the sheetnames as a vector
+sheet_names <- getSheetNames(here("data", "cleaning_outputs", "coral_clean_wide_human-friendly.xlsx"))
+
+
+```
+
+## Conditional Formatting
+
+The first set of conditional formatting will be for the dynamics fields.
+```{r}
+# Create a list of style objects for dynamics:
+# The background colors should be
+# - Recruitment: Blue
+# - Growth: Green
+# - Death: Red
+styles <- list(
+  Recruitment = createStyle(fontColour = "black", bgFill = "#159FEC"),
+  Growth = createStyle(fontColour = "black", bgFill = "#17A43F"),
+  Death = createStyle(fontColour = "black", bgFill = "#FB0006"),
+  Fission = createStyle(fontColour = "black", bgFill = "#A1BCD6"),
+  Fusion = createStyle(fontColour = "black", bgFill = "#B07EDD"),
+  MultipleDynamics = createStyle(fontColour = "white", bgFill = "black")
+)
+
+
+
+
+```
+
+```{r}
+# Apply conditional formatting for dynamics
+# First try doing it just for Recruitment in ALL_SITES tab
+
+# dyn_col_ind <- which(grepl("^dynamics", colnames(coral_clean_wide)))
+# row_range <- 2:(nrow(coral_clean_wide)+1)
+
+# # The easy ones first
+# conditionalFormatting(wb, sheet = "ALL_SITES", cols = dyn_col_ind, rows = row_range, rule = '=="Recruitment"', style = styles$Recruitment)
+# conditionalFormatting(wb, sheet = "ALL_SITES", cols = dyn_col_ind, rows = row_range, rule = '=="Growth"', style = styles$Growth)
+# conditionalFormatting(wb, sheet = "ALL_SITES", cols = dyn_col_ind, rows = row_range, rule = '=="Death"', style = styles$Death)
+# 
+# # For fission and fusion, we'll use the beginsWith type
+# conditionalFormatting(wb, sheet = "ALL_SITES", cols = dyn_col_ind, rows = row_range, type="beginsWith", rule = 'Fission', style = styles$Fission)
+# conditionalFormatting(wb, sheet = "ALL_SITES", cols = dyn_col_ind, rows = row_range, type="beginsWith", rule = 'Fusion', style = styles$Fusion)
+# 
+# # For multiple dynamics, we'll use the contains type. The rule will be ","
+# conditionalFormatting(wb, sheet = "ALL_SITES", cols = dyn_col_ind, rows = row_range, type="contains", rule = ",", style = styles$MultipleDynamics)
+# 
+
+
+
+```
+
+I want to be able to do what was done for the ALL_SITES sheet, except for all the sheets in the WB
+
+```{r}
+dyn_col_ind <- which(grepl("^dynamics", colnames(coral_clean_wide)))
+row_range <- 2:(nrow(coral_clean_wide)+1)
+
+for (sheet in sheet_names){
+  # easy ones first
+  conditionalFormatting(wb, sheet = sheet, cols = dyn_col_ind, rows = row_range, rule = '=="Recruitment"', style = styles$Recruitment)
+  conditionalFormatting(wb, sheet = sheet, cols = dyn_col_ind, rows = row_range, rule = '=="Growth"', style = styles$Growth)
+  conditionalFormatting(wb, sheet = sheet, cols = dyn_col_ind, rows = row_range, rule = '=="Death"', style = styles$Death)
+  
+  # For fission and fusion, we'll use the beginsWith type
+  conditionalFormatting(wb, sheet = sheet, cols = dyn_col_ind, rows = row_range, type="beginsWith", rule = 'Fission', style = styles$Fission)
+  conditionalFormatting(wb, sheet = sheet, cols = dyn_col_ind, rows = row_range, type="beginsWith", rule = 'Fusion', style = styles$Fusion)
+  
+  # For multiple dynamics, we'll use the contains type. The rule will be ","
+  conditionalFormatting(wb, sheet = sheet, cols = dyn_col_ind, rows = row_range, type="contains", rule = ",", style = styles$MultipleDynamics)
+}
+```
+
+```{r}
+```
+
+```{r}
+
+# Now let's run this for all the styles in the styles list. However, we must make sure that for Fission and Fusion, we don't take into account the trailing number when applying the rule.
+
+
+```
+
+```{r}
+
+
+# for(d in dynamics){
+#     conditionalFormatting(wb, sheet = "ALL_SITES", cols = 1:ncol(coral_clean_wide), rows = 2:(nrow(coral_clean_wide)+1), rule = paste0('== "', d, '"'), style = styles[[d]])
+#   }
+# }
+
+```
+
+
+## Save the Excel Sheet
+```{r}
+saveWorkbook(wb, file = here("data", "cleaning_outputs", "coral_clean_wide_human-friendly.xlsx"), overwrite = TRUE)
+```
+
+
+
