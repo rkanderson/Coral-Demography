@@ -15,7 +15,7 @@ library(janitor)
 library(tsibble)
 
 # Load our tidy coral dataset
-coral_df_tidy <- read_csv(here("data", "coral_tidy_2024.csv"))
+coral_df_tidy <- read_csv(here("data", "cleaning_outputs", "coral_tidy_2024.csv"))
 
 # Convert to tsibble
 coral_ts <- coral_df_tidy %>% 
@@ -191,7 +191,7 @@ here we won't actually want to use the comments field, but rather the growth rat
 coral_ts <- coral_ts %>% 
   group_by(coral_number) %>%
   mutate(
-    sum_dims = length + width + height,  # Sum of current year's dimensions
+    sum_dims = as.numeric(length) + as.numeric(width) + as.numeric(height),  # Sum of current year's dimensions
     prev_sum_dims = lag(sum_dims),  # Sum of previous year's dimensions
     growth_ratio = sum_dims / prev_sum_dims  # Calculate the growth ratio
   ) %>% 
@@ -302,7 +302,7 @@ coral_ts <- coral_ts %>%
 # remove the notes_extracted column, then save it as a csv
 # let's call it "coral_tidy_2024_with_dynamics.csv"
 coral_ts <- coral_ts %>% select(-notes_extracted) %>% 
-  write_csv(here("data", "coral_tidy_2024_with_dynamics.csv"))
+  write_csv(here("data", "cleaning_outputs", "coral_tidy_2024_with_dynamics.csv"))
 ```
 
 

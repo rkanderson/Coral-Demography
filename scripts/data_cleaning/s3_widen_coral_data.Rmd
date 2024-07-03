@@ -10,7 +10,7 @@ library(here)
 library(openxlsx)
 
 # Load data
-coral_df <- read_csv(here("data", "coral_tidy_2024_with_dynamics.csv"))
+coral_df <- read_csv(here("data", "cleaning_outputs", "coral_tidy_2024_with_dynamics.csv"))
 ```
 
 ## Create aggregated 'dynamic' field
@@ -99,6 +99,8 @@ coral_df_wider <- coral_df_longer %>%
   pivot_wider(names_from = key, values_from = value)
 ```
 
+
+## Convert numeric data back to numeric (DISCONTINUED)
 Since we're done pivoting, we can convert our numeric data back to being properly a numeric type.
 
 We would convert
@@ -108,8 +110,8 @@ We would convert
 - growth_ratio_YYYY
 
 ```{r}
-coral_df_wider <- coral_df_wider %>% 
-  mutate_at(vars(matches("length_[0-9]{4}|width_[0-9]{4}|height_[0-9]{4}|growth_ratio_[0-9]{4}")), as.numeric)
+# coral_df_wider <- coral_df_wider %>% 
+#   mutate_at(vars(matches("length_[0-9]{4}|width_[0-9]{4}|height_[0-9]{4}|growth_ratio_[0-9]{4}")), as.numeric)
 ```
 
 
@@ -117,27 +119,5 @@ coral_df_wider <- coral_df_wider %>%
 ## Save the data
 ```{r}
 write_csv(coral_df_wider, here("data", "cleaning_outputs", "coral_clean_wide_2024.csv"))
-```
-
-## Saving in special format
-NOTE this is now done in a dedicated excel script.
-Let's save this as a xlsx file with multiple tabs
-```{r}
-# wb <- createWorkbook()
-# addWorksheet(wb, "ALL_SITES")
-# writeData(wb, sheet = "ALL_SITES", x = coral_df_wider)
-# 
-# # Loop through the unique values for site and habitat
-# site_habitat <- coral_df_wider %>% select(site, habitat) %>% distinct()
-# for(i in 1:nrow(site_habitat)){
-#   site <- site_habitat$site[[i]]
-#   habitat <- site_habitat$habitat[[i]]
-#   sheet_name <- paste0(site, "_", habitat)
-#   addWorksheet(wb, sheet_name)
-#   writeData(wb, sheet = sheet_name, x = coral_df_wider %>% filter(site == site_habitat$site[[i]], habitat == site_habitat$habitat[[i]]))
-# }
-# 
-# saveWorkbook(wb, file = "coral_demography_2013-2023_cleaned.xlsx", overwrite = TRUE)
-
 ```
 

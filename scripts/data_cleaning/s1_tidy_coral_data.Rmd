@@ -18,7 +18,7 @@ library(readxl)
 # in order to obtain a coral_df_raw
 
 # Get the column names of each sheet in the file that matches the pattern "LTERXAA"
-sheets_habitats <- excel_sheets(here("data", "coral_raw_wide_2024.xlsx")) %>% 
+sheets_habitats <- excel_sheets(here("data", "raw", "coral_raw_wide_2024.xlsx")) %>% 
   str_subset("^LTER[0-9]{1}[A-Z]{2}$")
 
 COLUMN_LIMIT <- 100 # The maximum number of columns we'll need to load from each sheet.
@@ -37,7 +37,7 @@ COLUMN_LIMIT <- 100 # The maximum number of columns we'll need to load from each
 #   map(~clean_names(.)) %>%
 #   reduce(bind_rows)
 coral_habitats_raw_cleaned_names <- sheets_habitats %>%
-  map(~ read_excel(here("data", "coral_raw_wide_2024.xlsx"), 
+  map(~ read_excel(here("data", "raw", "coral_raw_wide_2024.xlsx"), 
                    sheet = .x, range = cell_cols(c(1, COLUMN_LIMIT)))
       ) %>%
   map(~ mutate_all(., as.character)) %>%
@@ -146,23 +146,26 @@ coral_df_tidy <- coral_df_tidy %>%
 
 So we aren't getting any list-cols! That's good.
 
+## Re-Converting numeric rows and removing NA values (Discontinued)
+
 Now the last thing we need to do is convert the fields x, y, z, year, length, width, height to be properly numeric again.
 
 ```{r}
-coral_df_tidy <- coral_df_tidy %>%
-  mutate_at(vars(x, y, z, year, length, width, height), as.numeric)
+# coral_df_tidy <- coral_df_tidy %>%
+#   mutate_at(vars(x, y, z, year, length, width, height), as.numeric)
 # NAs will be introduced by this for string values, and that's ok.
 ```
 
-Furthermore, there are a lot of values that are meaningless strings like "NA", "Na" and "UK" (meaning "unknown"). We'll want to convert these to be actual NAs. These exist in the fields observer, note, and note_extra
-
 ```{r}
-coral_df_tidy <- coral_df_tidy %>%
-  mutate_at(vars(observer, note, note_extra), ~na_if(., "NA")) %>%
-  mutate_at(vars(observer, note, note_extra), ~na_if(., "Na")) %>%
-  mutate_at(vars(observer, note, note_extra), ~na_if(., "UK"))
+# This commmented code below turns all "NA", "Na", and "UK" values to be NA
+# We will not do this, as per Mohsen's request
+# coral_df_tidy <- coral_df_tidy %>%
+#   mutate_at(vars(observer, note, note_extra), ~na_if(., "NA")) %>%
+#   mutate_at(vars(observer, note, note_extra), ~na_if(., "Na")) %>%
+#   mutate_at(vars(observer, note, note_extra), ~na_if(., "UK"))
 ```
 
+## Normalizing Factor Variables
 
 There are some discrete factor variables that may have different cases.
 - habitat should be set to all uppercase
@@ -182,11 +185,24 @@ coral_df_tidy <- coral_df_tidy %>%
 
 
 ```{r}
+## Code to check the result of normalization
 # Show distinct values for each non numeric field individually
-coral_df_tidy %>% 
-  select(habitat, taxa, observer, site, transect) %>% 
-  map(~unique(.x))
+# coral_df_tidy %>% 
+#   select(habitat, taxa, observer, site, transect) %>% 
+#   map(~unique(.x))
 ```
+## Normalize the NA string values
+
+If a capital string NA is written, R gets confused when reading and thinks it's truly an NA, when I want to keep it as an NA string. To get around this, I'll make sure that all na strings are written as Na (title case).
+
+```{r}
+# For all cells, if the value is "NA", convert it to "Na"
+coral_df_tidy <- coral_df_tidy %>%
+  mutate_all(~str_replace(., "NA", "Na"))
+
+```
+
+
 
 ## Renaming Transects and Plots
 
@@ -206,7 +222,7 @@ coral_df_tidy_transect_renamed <- coral_df_tidy %>%
 Let's store this data file so that we can use it later.
 
 ```{r}
-write_csv(coral_df_tidy_transect_renamed, here("data", "coral_tidy_2024.csv"))
+write_csv(coral_df_tidy_transect_renamed, here("data", "cleaning_outputs", "coral_tidy_2024.csv"))
 ```
 
 

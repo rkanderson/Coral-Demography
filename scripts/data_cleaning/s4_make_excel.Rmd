@@ -59,7 +59,9 @@ styles <- list(
   Death = createStyle(fontColour = "black", bgFill = "#FB0006"),
   Fission = createStyle(fontColour = "black", bgFill = "#A1BCD6"),
   Fusion = createStyle(fontColour = "black", bgFill = "#B07EDD"),
-  MultipleDynamics = createStyle(fontColour = "white", bgFill = "black")
+  MultipleDynamics = createStyle(fontColour = "white", bgFill = "black"),
+  NaValue = createStyle(fontColour = "black", bgFill = "yellow"),
+  UkValue = createStyle(fontColour = "black", bgFill = "orange")
 )
 
 
@@ -109,28 +111,37 @@ for (sheet in sheet_names){
   
   # For multiple dynamics, we'll use the contains type. The rule will be ","
   conditionalFormatting(wb, sheet = sheet, cols = dyn_col_ind, rows = row_range, type="contains", rule = ",", style = styles$MultipleDynamics)
+  
+  # For the Na and UK values, we'll use the default type, and apply it to all columns
+  conditionalFormatting(wb, sheet = sheet, cols = 2:ncol(coral_clean_wide), rows = row_range, rule = '=="Na"', style = styles$NaValue)
+  conditionalFormatting(wb, sheet = sheet, cols = 2:ncol(coral_clean_wide), rows = row_range, rule = '=="UK"', style = styles$UkValue)
+  
 }
 ```
 
+
+## Final Renaming
+TODO make apply to workbook.... somehow
+To make this easy to read, a set of shortened names will be used for columns
 ```{r}
+# First, rename height_XXXX, widith_XXXX, and length_XXXX to just hXXXX, wXXXX, and lXXXX
+# also rename observer_XXXX to just obsXXXX.
+# also rename dynamics_XXXX to just dynXXXX.
+# also rename growth_ratio_XXXX to just grXXXX.
+# coral_clean_wide <- coral_clean_wide %>% 
+#   rename_with(~str_replace(., "height_", "h"), starts_with("height")) %>% 
+#   rename_with(~str_replace(., "width_", "w"), starts_with("width")) %>% 
+#   rename_with(~str_replace(., "length_", "l"), starts_with("length")) %>% 
+#   rename_with(~str_replace(., "observer_", "obs"), starts_with("observer")) %>% 
+#   rename_with(~str_replace(., "dynamics_", "dyn"), starts_with("dynamics")) %>% 
+#   rename_with(~str_replace(., "growth_ratio_", "gr"), starts_with("growth_ratio"))
+# 
+# # Next, convert all names to title case
+# colnames(coral_clean_wide) <- colnames(coral_clean_wide) %>% str_to_title()
+
+
 ```
 
-```{r}
-
-# Now let's run this for all the styles in the styles list. However, we must make sure that for Fission and Fusion, we don't take into account the trailing number when applying the rule.
-
-
-```
-
-```{r}
-
-
-# for(d in dynamics){
-#     conditionalFormatting(wb, sheet = "ALL_SITES", cols = 1:ncol(coral_clean_wide), rows = 2:(nrow(coral_clean_wide)+1), rule = paste0('== "', d, '"'), style = styles[[d]])
-#   }
-# }
-
-```
 
 
 ## Save the Excel Sheet
