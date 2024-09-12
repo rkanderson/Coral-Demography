@@ -1,0 +1,99 @@
+
+```{r}
+
+# Clean env
+rm(list = ls())
+
+# Load libraries
+library(tidyverse)
+library(here)
+
+# Load data
+# Get the data file that has the dynamics added
+# data/cleaning_outputs/coral_tidy_2024_with_dynamics.csv
+coral_df <- read_csv(here("data", "cleaning_outputs", "coral_tidy_2024_with_dynamics.csv"))
+
+# Filter to grab only observations that have more than one dyn_* column set to 1
+# This is indicative of an observation that has multiple dynamics
+# and these are the rows that Mohsen thinks are unusual and important to look at manually
+
+# First make a new column that contains all the names of the columns beginning with dyn_ set to 1.
+# so if a row has dyn_death and dyn_growth set to 1, then the new column will contain "dyn_death, dyn_growth"
+
+# This will make it more clean to read instances of multiple dynamics as well as sort by this column to see common trends of combinations of dynamics
+# This will also make it easier to filter for rows that have multiple dynamics set to 1 by querying to see when dynamics contains a comma
+
+dyn_cols <- coral_df %>%
+  select(starts_with("dyn_")) %>%
+  colnames()
+
+coral_df_weird <- coral_df %>% 
+  filter(rowSums(select(., starts_with("dyn_")) == 1) > 1) %>% 
+  mutate(dynamics = NA)
+
+for(obs in 1:nrow(coral_df_weird)){
+  dyn <- c()
+  for(col in dyn_cols){
+    if(coral_df_weird[[col]][obs] == 1){
+      dyn <- append(dyn, str_remove(col, "dyn_"))
+    }
+  }
+  coral_df_weird$dynamics[obs] <- str_c(dyn, collapse = ",")
+}
+
+# De-select columns beginning with dyn_
+coral_df_weird <- coral_df_weird %>%
+  select(-starts_with("dyn_"))
+
+# Sort order based on dynamics column
+coral_df_weird <- coral_df_weird %>% 
+  arrange(dynamics)
+
+# Save this to a csv file
+write_csv(coral_df_weird, here("coral_observations_in_need_of_attention.csv"))
+
+```
+
+```{r}
+# Get a summary of the counts for each dynamics value in coral_df_weird
+coral_weird_summary <- coral_df_weird %>%
+  count(dynamics) %>%
+  arrange(desc(n))
+
+```
+
+```{r}
+
+```
+```{r}
+
+```
+
+```{r}
+```
+
+
+```{r}
+# Do this more cleanly, without having to rely on knowing all the speciific names
+# of the columns
+# First, get all the columns that start with dyn_
+dyn_cols <- coral_df %>%
+  select(starts_with("dyn_")) %>%
+  colnames()
+
+# Now create the new column 'dynamics'
+coral_df <- coral_df %>%
+  mutate(dynamics = str_c(
+    select(., starts_with("dyn_")) %>%
+      mutate_all(~if_else(. == 1, str_remove(., "dyn_"), "")) %>%
+      filter_all(any_vars(. != "")) %>%
+      map_chr(~str_c(., collapse = ",")))
+
+
+# 
+# 
+# coral_df_weird <- coral_df %>%
+#   filter(rowSums(select(., starts_with("dyn_")) == 1) > 1)
+
+```
+

@@ -1,0 +1,53 @@
+
+## Setup
+```{r}
+# Clear env
+rm(list=ls())
+
+# Load necessary libraries
+library(tidyverse)
+library(here)
+
+# Load data
+coral_df <- read_csv(here("data", "coral_tidy_2024_with_dynamics.csv"))
+
+
+```
+
+
+## Visualize the data
+
+Let's plot the total number of dynamics for each site, habitat, year
+
+```{r}
+# Group by site, habitat, year and summarize to total the death column, recruitment column, etc.
+dynamics_summary <- coral_df %>%
+  group_by(site, habitat, year) %>%
+  summarize(
+    death = sum(death),
+    growth = sum(growth),
+    recruitment = sum(recruitment),
+    fusion = sum(fusion),
+    fission = sum(fission),
+  ) %>%
+  gather(key = "dynamics", value = "count", -site, -habitat, -year)
+
+# First plot everything except the habitat==BR
+# In the year 2017, no data was collected, so I want to exclude it properly
+# the line graph should have a break in it
+dynamics_summary %>%
+  filter(habitat != "Br") %>%
+  ggplot(aes(x = year, y = count, color = dynamics)) +
+  geom_line() +
+  facet_grid(site ~ habitat) +
+  labs(title = "Total Dynamics by Site and Habitat",
+       x = "Year",
+       y = "Count") +
+  theme_minimal()
+
+```
+
+```{r}
+
+```
+
