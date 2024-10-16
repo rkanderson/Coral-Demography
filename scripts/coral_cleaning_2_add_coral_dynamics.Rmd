@@ -20,7 +20,7 @@ TEST <- FALSE
 # Load our tidy coral dataset
 # if we're testing, we'll load the test one. coral_tidy_2024_for_test.csv
 if(TEST) {
-  coral_df_tidy <- read_csv(here("data_outputs", "coral_tidy_2024_for_test.csv"))
+  coral_df_tidy <- read_csv(here("data_outputs", "coral_tidy_2024_for_test2.csv"))
 } else {
   coral_df_tidy <- read_csv(here("data_outputs", "coral_tidy_2024.csv"))
 }
@@ -219,7 +219,11 @@ for (i in 1:nrow(coral_ts)) {
 There are some cases where a never before documented coral suddenly appears.
 For the sake of this study we will consider any of these corals that suddenly appear as recruits if their largest dimension is less than 6cm. Otherwise, we will need to label this observation with the dynamic "missing data".
 
+**NOTE: The following rule no longer applies as of Oct 2024**
 There is another case for missing data that we need to handle: any time there is a gap for a particular coral. We can tell if this is the case because first_instance is FALSE and there is no numerical data for the dimensions of the coral in the previous year.
+
+**This rule was disabled because** Hunter and Mohsen decided that they definitely would not have missed any corals while doing the survey. It must be that at some point they just forgot to note "Dead" in some way and decided that a lack of numerical data was enough to imply death.
+
 
 ```{r}
 # First, let's initialize the missing_data column.
@@ -250,37 +254,66 @@ for(i in 1:nrow(coral_ts)) {
     } else if(coral_ts$year[i] > min(coral_ts$year)) {
       coral_ts$missing_data[i] <- 1
     }
-  } else {
-    # The case where the particular observation is not the first case of numerical observation.
-    # When it’s NOT the sudden appearance case, then an observation is flagged as Missing Data if the particular coral has previously been encountered but was not confirmed dead
-#       1) Has no numerical data for the year of observation
-#       2) Has no numerical data for the PREVIOUS year of observation (assuming this is not the first year of the study)
-    if(coral_ts$coral_encountered[i]==TRUE & coral_ts$coral_died[i]==FALSE) {
-      # Check if the dimensions are NA for the current year and the previous year
-      if(is.na(coral_length) || is.na(coral_width) || is.na(coral_height)) {
-        coral_ts$missing_data[i] <- 1
-      } else if(coral_ts$year[i] > min(coral_ts$year)) {
-        # Get previous years dimensions
-        prev_coral_length <- suppressWarnings(as.numeric(coral_ts$length[i-1]))
-        prev_coral_width <- suppressWarnings(as.numeric(coral_ts$width[i-1]))
-        prev_coral_height <- suppressWarnings(as.numeric(coral_ts$height[i-1]))
-        if(is.na(prev_coral_length) || is.na(prev_coral_width) || is.na(prev_coral_height)) {
-          coral_ts$missing_data[i] <- 1
-        }
-      }
-    }
-    
-    
-    # if((is.na(coral_length) || is.na(coral_width) || is.na(coral_height)) &&
-    #    coral_ts$coral_died[i] == FALSE &&
-    #    coral_ts$coral_encountered[i] == TRUE) {
-    #   coral_ts$missing_data[i] <- 1
-    # }
-  }
+  } 
+
 }
 
 ```
+l
 
+### Vanishing Corals (Another Type of Death)
+
+There are some cases where a coral that was previously documented is no longer present. We will consider these corals as having died, and will set the death dynamic to 1 for these observations.
+
+```{r}
+# Vanishing Logic
+# If the coral suddenly vanished
+# (meaning there is no numerical data for its dimensions, 
+# but it hasn't been confirmed dead in some other way yet), then 
+# call it dead and update the other vars as necessary.
+
+# We'll need to loop through in order of the years for this to work correctly
+coral_ts <- coral_ts %>% arrange(year)
+
+# Make a vector of vanished corals.
+# We'll grow this as we loop through and add vanished corals we find here, that way we don't double mark any as dead.
+vanished_corals <- c()
+  
+# Loop through coral ts
+for(i in 1:nrow(coral_ts)) {
+  # First check if the current coral number observation has already been found so far. Skip if so.
+  if(coral_ts$coral_number[i] %in% vanished_corals) {
+    next
+  }
+  
+  # If the year is 2013 (the first year of the study), then we'll also skip because no coral can vanish in the first year.
+  if(coral_ts$year[i] == 2013) {
+    next
+  }
+  
+  # get all the coral dimensions with as.numeric, 
+  # and suppress warnings
+  coral_length <- suppressWarnings(as.numeric(coral_ts$length[i]))
+  coral_width <- suppressWarnings(as.numeric(coral_ts$width[i]))
+  coral_height <- suppressWarnings(as.numeric(coral_ts$height[i]))
+  
+  
+  # Next if the coral has been encountered, hasn't been 
+  # confirmed dead via the comments or LWH values, and if 
+  # there is no current numerical data, it's safe to say 
+  # that it died that year.
+  if(coral_ts$coral_encountered[i]==TRUE &&
+       coral_ts$coral_died[i]==FALSE &&
+       is.na(coral_length) && is.na(coral_width) && is.na(coral_height)) {
+    # browser()
+    coral_ts$death[i] <- 1
+    # Update our vanished_coral vec
+    vanished_corals <- c(vanished_corals, coral_ts$coral_number[i])
+  }
+}
+    
+
+```
 
 ### Fusion
 We know that fusion ocurred at an observation
