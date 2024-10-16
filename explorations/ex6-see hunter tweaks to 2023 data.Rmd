@@ -1,0 +1,91 @@
+
+Let's examine Hunter's tweaks to the 2023 data as it compares to the human
+friendly one that I generate from our existing data.
+
+data_outputs/coral_clean_wide_human-friendly.xlsx
+data_raw/coral_raw_wide_2024_hunter-mod_sept-oct.xlsx
+
+```{r}
+# Clean env
+rm(list=ls())
+
+# Load necessary libraries
+library(tidyverse)
+library(here)
+library(janitor)
+library(readxl)
+
+# My existing datasheet
+coral_df <- read_excel(here("data_outputs", "coral_clean_wide_human-friendly.xlsx")) %>% 
+  clean_names()
+
+# Hunter's modified data
+coral_df_hunter_mod <- read_excel(here("data_raw", "coral_raw_wide_2024_hunter-mod_sept-oct.xlsx")) %>% 
+  clean_names()
+
+
+```
+```{r}
+# Let's start getting diffs for columns in each. 
+
+# What is the difference between the l2023 field for either, for example
+
+# For example
+# Find the indices where the vectors differ
+# diff_indices <- which(vec1 != vec2)
+# 
+# # Display the indices and the corresponding differing values
+# data.frame(
+#   Index = diff_indices,
+#   Vec1_Value = vec1[diff_indices],
+#   Vec2_Value = vec2[diff_indices]
+# )
+
+# Write a function that takes in 2 equal-length vectors and returns a dataframe
+# that contains their diff in this manner
+get_diff <- function(vec1, vec2){
+  diff_indices <- which(vec1 != vec2)
+  data.frame(
+    Index = diff_indices,
+    Vec1_Value = vec1[diff_indices],
+    Vec2_Value = vec2[diff_indices]
+  )
+}
+
+
+
+```
+
+```{r}
+# Get the differences for the l2023 field
+get_diff(coral_df$l2023, coral_df_hunter_mod$l2023)
+```
+
+```{r}
+# Get the differences for the w2023 field
+get_diff(coral_df$w2023, coral_df_hunter_mod$w2023)
+```
+
+```{r}
+# Get the differences for the h2023 field
+get_diff(coral_df$h2023, coral_df_hunter_mod$h2023)
+```
+
+```{r}
+# Get the differences for the note_2023 field
+get_diff(coral_df$note_2023, coral_df_hunter_mod$note_2023)
+```
+
+```{r}
+# Get the differences for the note_2023_extra field
+get_diff(coral_df$note_2023_extra, coral_df_hunter_mod$note_2023_extra)
+```
+
+```{r}
+# Get the differences for the dynamics_2023 field
+get_diff(coral_df$dynamics_2023, coral_df_hunter_mod$dynamics_2023)
+```
+
+Exploration complete. It appears hunter only set Missing Data to Death a bunch of times, but didn't do anything else besides that.
+
+It is not worth keeping this modified file. It does not provide anything else useful. I will add it to the exploration script section for future reference, but remove it from the raw directory.

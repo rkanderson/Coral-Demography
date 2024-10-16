@@ -17,6 +17,27 @@ library(openxlsx)
 coral_clean_wide <- read_csv(here("data_outputs", "coral_clean_wide_2024.csv"))
 ```
 
+## Col Name Changes
+There are a set of names that should change to be like what was in the original spreadsheet.
+These names are more readable, and it'll make the scripts be backwards compatible with the produced human-friendly excel files; the outputed file can be edited and RE-fed into the sequence of scripts to be re-cleaned.
+```{r}
+# First, rename height_XXXX, widith_XXXX, and length_XXXX to just hXXXX, wXXXX, and lXXXX
+# also rename observer_XXXX to just obsXXXX.
+# also rename "note_extra_XXXX" to "note_XXXX_extra"
+
+
+coral_clean_wide <- coral_clean_wide %>% 
+  rename_with(~str_replace(., "height_", "H"), starts_with("height")) %>% 
+  rename_with(~str_replace(., "width_", "W"), starts_with("width")) %>% 
+  rename_with(~str_replace(., "length_", "L"), starts_with("length")) %>% 
+  rename_with(~str_replace(., "observer_", "Obs"), starts_with("observer")) %>% 
+  rename_with(~ str_replace(., "note_extra_(\\d+)", "note_\\1_extra"))
+
+
+```
+
+
+
 ## Create workbook and add sheets
 ```{r}
 wb <- createWorkbook()
@@ -30,7 +51,7 @@ site_habitat <- coral_clean_wide %>% select(site, habitat) %>% distinct()
 for(i in 1:nrow(site_habitat)){
   site <- site_habitat$site[[i]]
   habitat <- site_habitat$habitat[[i]]
-  sheet_name <- paste0(site, "_", habitat)
+  sheet_name <- paste0(site, habitat)
   addWorksheet(wb, sheet_name)
   writeData(wb, sheet = sheet_name, x = coral_clean_wide %>% filter(site == site_habitat$site[[i]], habitat == site_habitat$habitat[[i]]))
 }
@@ -56,13 +77,14 @@ The first set of conditional formatting will be for the dynamics fields.
 styles <- list(
   Recruitment = createStyle(fontColour = "black", bgFill = "#159FEC"),
   Growth = createStyle(fontColour = "black", bgFill = "#17A43F"),
-  Shrinkage = createStyle(fontColour = "white", bgFill = "#055020"),
+  Shrinkage = createStyle(fontColour = "white", bgFill = "darkgreen"),
   Death = createStyle(fontColour = "black", bgFill = "#FB0006"),
   Fission = createStyle(fontColour = "black", bgFill = "#A1BCD6"),
   Fusion = createStyle(fontColour = "black", bgFill = "#B07EDD"),
   MultipleDynamics = createStyle(fontColour = "white", bgFill = "black"),
   NaValue = createStyle(fontColour = "black", bgFill = "yellow"),
-  UkValue = createStyle(fontColour = "black", bgFill = "orange")
+  UkValue = createStyle(fontColour = "black", bgFill = "orange"),
+  MissingData = createStyle(fontColour = "white", bgFill = "brown")
 )
 
 
@@ -106,6 +128,7 @@ for (sheet in sheet_names){
   conditionalFormatting(wb, sheet = sheet, cols = dyn_col_ind, rows = row_range, rule = '=="Growth"', style = styles$Growth)
   conditionalFormatting(wb, sheet = sheet, cols = dyn_col_ind, rows = row_range, rule = '=="Shrinkage"', style = styles$Shrinkage)
   conditionalFormatting(wb, sheet = sheet, cols = dyn_col_ind, rows = row_range, rule = '=="Death"', style = styles$Death)
+  conditionalFormatting(wb, sheet = sheet, cols = dyn_col_ind, rows = row_range, rule = '=="Missing Data"', style = styles$MissingData)
   
   # For fission and fusion, we'll use the beginsWith type
   conditionalFormatting(wb, sheet = sheet, cols = dyn_col_ind, rows = row_range, type="beginsWith", rule = 'Fission', style = styles$Fission)
@@ -140,7 +163,6 @@ To make this easy to read, a set of shortened names will be used for columns
 # 
 # # Next, convert all names to title case
 # colnames(coral_clean_wide) <- colnames(coral_clean_wide) %>% str_to_title()
-
 
 ```
 

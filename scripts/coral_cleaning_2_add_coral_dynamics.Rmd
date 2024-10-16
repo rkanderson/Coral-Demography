@@ -15,7 +15,7 @@ library(janitor)
 library(tsibble)
 
 # TEST param. Set to True if you want to work with a truncated version of the dataset
-TEST <- TRUE
+TEST <- FALSE
 
 # Load our tidy coral dataset
 # if we're testing, we'll load the test one. coral_tidy_2024_for_test.csv
@@ -64,7 +64,8 @@ all_notes
 rm(all_notes)
 ```
 
-## Setting up first_instance property
+## Setting up first_instance & coral_encountered properties
+
 Let's initialize a property called first_instance that will indicate
 if data observed represents the first instance of a particular coral
 appearing in the dataset. This will be helpful later on.
@@ -80,19 +81,54 @@ coral_ts_numeric_only <- coral_ts %>%
            !is.na(suppressWarnings(as.numeric(width))) & 
            !is.na(suppressWarnings(as.numeric(height))))
 
-
+# Get the first instance year for each coral
+# We want to get it as a list, so that way we can map coral_number to a given year that it was first encountered
 first_instance_years <- coral_ts_numeric_only %>% 
+  as_tibble() %>%
   group_by(coral_number) %>% 
   summarize(first_instance_year = min(year)) %>% 
-  arrange(coral_number) %>% 
-  pull(first_instance_year)
+  deframe() %>% 
+  as.list()
 
-coral_ts <- coral_ts %>%
-  mutate(first_instance = year == first_instance_years)
+# Note to access a year value here, the coral number needs to be turned into a string and then used as a key.
+
+
+# first_instance_years <- coral_ts_numeric_only %>% 
+#   as_tibble() %>%
+#   group_by(coral_number) %>% 
+#   summarize(first_instance_year = min(year)) %>% 
+#   arrange(coral_number) %>% 
+#   pull(first_instance_year)
+
+# coral_ts <- coral_ts %>%
+#   mutate(first_instance = year == first_instance_years)
+
+# initialize empty columns
+coral_ts <- coral_ts %>% 
+  mutate(first_instance = FALSE, coral_encountered = FALSE)
+
+# Loop through the coral_ts and set first_instance to TRUE if the year matches the first_instance_years and coral_encountered to TRUE if the year is greater than or equal to the first_instance_years
+for(i in 1:nrow(coral_ts)) {
+  # Some corals don't have a first instance year, skip these
+  first_instance_year <- first_instance_years[[coral_ts$coral_number[i] %>% as.character()]]
+  if(is.null(first_instance_year)) {
+    next
+  }
+  coral_ts$first_instance[i] <- coral_ts$year[i] == first_instance_year
+  coral_ts$coral_encountered[i] <- coral_ts$year[i] >= first_instance_year
+}
 
 
 ```
 
+TODO move explanation above?
+Next let's use the first_instance property to create yet another property called coral_encountered. This will be set to TRUE if the coral has been encountered before, and FALSE otherwise.
+
+
+```{r}
+# coral_ts <- coral_ts %>%
+#   mutate(coral_encountered = year >= first_instance_years)
+```
 
 
 ## Parsing notes for dynamics
@@ -109,8 +145,49 @@ for (i in 1:nrow(coral_ts)) {
   if ("d" %in% note || "dead" %in% note) {
     coral_ts$death[i] <- 1
   }
+  # There are some corals where death was not indicated in the note,
+  # but in the dimension fields by writing "Dead" or "D" for length, width, and height.
+  # Let's just check if the length field lowercase equals d or death
+  length <- coral_ts$length[i] %>% tolower()
+  if(!is.na(length) && (length == "d" || length == "dead")) {
+    coral_ts$death[i] <- 1
+  }
 }
 ```
+
+#### Death Years and coral_died property
+It'll be useful to get these things initialized. It will help us to avoid marking something with the death dynamic multiple years, as well as help us with identifying missing data.
+
+First, let's create  death_years by doing filter for death_dynamic and group_by for coral_numbers, then do a min() for each group to get the death year.
+```{r}
+death_years <- coral_ts %>% 
+  as_tibble() %>% 
+  filter(death==1) %>% 
+  group_by(coral_number) %>% 
+  summarize(death_years = min(year)) %>% 
+  deframe() %>% 
+  as.list()
+```
+
+Then let's create the field coral_died by using a for loop to compare each observation's year with the death_year. If it's greater than or equal to it's corresponding death year,
+we say it died.
+
+```{r}
+# Initialize empty col
+coral_ts <- coral_ts %>% 
+  mutate(coral_died = FALSE)
+
+# Set the property
+for(i in 1:nrow(coral_ts)) {
+  death_year <- death_years[[coral_ts$coral_number[i] %>% as.character()]]
+  # Leave ones that haven't died yet (ie no death year) to remain as FALSE
+  if(is.null(death_year)) {
+    next
+  }
+  coral_ts$coral_died[i] <- coral_ts$year[i] >= death_year
+}
+```
+
 
 
 ### Recruitment (Explicitly Noted)
@@ -154,17 +231,16 @@ coral_ts <- coral_ts %>% mutate(missing_data = 0)
 #   if the largest dimension is less than 6, set recruitment to 1
 #.  otherwise, set missing_data to 1
 for(i in 1:nrow(coral_ts)) {
+   # First get all the coral dimensions with as.numeric, and suppress warnings
+  coral_length <- suppressWarnings(as.numeric(coral_ts$length[i]))
+  coral_width <- suppressWarnings(as.numeric(coral_ts$width[i]))
+  coral_height <- suppressWarnings(as.numeric(coral_ts$height[i]))
+    
   if(coral_ts$first_instance[i] == TRUE) {
     # Get the largest dimension
     # remember that length, width, height are str type.
     # Sometimes they might say "Na" or "Dead" instead of a number.
     # These should be skipped. Otherwise, convert to a number first.
-    
-    # First get all the coral dimensions with as.numeric, and suppress warnings
-    coral_length <- suppressWarnings(as.numeric(coral_ts$length[i]))
-    coral_width <- suppressWarnings(as.numeric(coral_ts$width[i]))
-    coral_height <- suppressWarnings(as.numeric(coral_ts$height[i]))
-    
     if(is.na(coral_length) || is.na(coral_width) || is.na(coral_height)) {
       next
     }
@@ -174,19 +250,32 @@ for(i in 1:nrow(coral_ts)) {
     } else if(coral_ts$year[i] > min(coral_ts$year)) {
       coral_ts$missing_data[i] <- 1
     }
-  } else if(coral_ts$first_instance[i] == FALSE) {
-    # Check if the previous year has any dimensions
-    # First, get prev coral dimensions, and suppress warnings
-    prev_coral_length <- suppressWarnings(as.numeric(coral_ts$length[i-1]))
-    prev_coral_width <- suppressWarnings(as.numeric(coral_ts$width[i-1]))
-    prev_coral_height <- suppressWarnings(as.numeric(coral_ts$height[i-1]))
-    
-    # Then check if any of the previous dimensions were non numeric values
-    # (They should be NA after the conversion)
-    # Set missing_data <- 1 if so, since this is indicative of a gap.
-    if(is.na(prev_coral_length) || is.na(prev_coral_width) || is.na(prev_coral_height)) {
-      coral_ts$missing_data[i] <- 1
+  } else {
+    # The case where the particular observation is not the first case of numerical observation.
+    # When it’s NOT the sudden appearance case, then an observation is flagged as Missing Data if the particular coral has previously been encountered but was not confirmed dead
+#       1) Has no numerical data for the year of observation
+#       2) Has no numerical data for the PREVIOUS year of observation (assuming this is not the first year of the study)
+    if(coral_ts$coral_encountered[i]==TRUE & coral_ts$coral_died[i]==FALSE) {
+      # Check if the dimensions are NA for the current year and the previous year
+      if(is.na(coral_length) || is.na(coral_width) || is.na(coral_height)) {
+        coral_ts$missing_data[i] <- 1
+      } else if(coral_ts$year[i] > min(coral_ts$year)) {
+        # Get previous years dimensions
+        prev_coral_length <- suppressWarnings(as.numeric(coral_ts$length[i-1]))
+        prev_coral_width <- suppressWarnings(as.numeric(coral_ts$width[i-1]))
+        prev_coral_height <- suppressWarnings(as.numeric(coral_ts$height[i-1]))
+        if(is.na(prev_coral_length) || is.na(prev_coral_width) || is.na(prev_coral_height)) {
+          coral_ts$missing_data[i] <- 1
+        }
+      }
     }
+    
+    
+    # if((is.na(coral_length) || is.na(coral_width) || is.na(coral_height)) &&
+    #    coral_ts$coral_died[i] == FALSE &&
+    #    coral_ts$coral_encountered[i] == TRUE) {
+    #   coral_ts$missing_data[i] <- 1
+    # }
   }
 }
 
@@ -395,7 +484,7 @@ coral_ts <- coral_ts %>%
 ```{r}
 # remove the notes_extracted column, then save it as a csv
 # let's call it "coral_tidy_2024_with_dynamics.csv"
-coral_ts <- coral_ts %>% select(-notes_extracted) %>% 
+coral_ts <- coral_ts %>% select(-notes_extracted, -first_instance, -coral_encountered, -coral_died) %>% 
   write_csv(here("data_outputs", "coral_tidy_2024_with_dynamics.csv"))
 ```
 
