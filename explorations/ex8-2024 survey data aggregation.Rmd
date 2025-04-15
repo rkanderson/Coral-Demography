@@ -130,9 +130,12 @@ data_2024_tidy %>% colnames()
 ```
 
 ```{r}
-# It has become apparent that there are some data sections that are empty
-# maybe hunter forgot to enter data for those areas?
+# Save data_2024_tidy
+# save to data_outputs/coral_data_update_tidy_2025.csv
+write_csv(data_2024_tidy, here("data_outputs", "coral_data_update_tidy_2024.csv"))
+```
 
+```{r}
 ```
 
 

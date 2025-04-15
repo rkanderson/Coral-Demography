@@ -1,0 +1,46 @@
+
+```{r}
+# Clean env
+rm(list=ls())
+
+# Load libs
+library(tidyverse)
+library(here)
+
+# Load data
+# data_outputs/coral_tidy_2024.csv
+coral_df_tidy <- read_csv(here("data_outputs", "coral_tidy_2024.csv"))
+
+# also grab
+# data_outputs/coral_data_update_tidy_2024.csv
+coral_df_update_tidy <- read_csv(here("data_outputs", "coral_data_update_tidy_2024.csv"))
+
+
+```
+
+```{r}
+
+# Convert length, width, and height of the update df to be a str type
+# this is because is because the current tidy data is treated as a string to presereve
+# manually entered in Na values and UK values
+coral_df_update_tidy <- coral_df_update_tidy %>% 
+  mutate(
+    length = as.character(length),
+    width = as.character(width),
+    height = as.character(height)
+  )
+
+# Bind the two together
+coral_df_tidy_combined <- bind_rows(coral_df_tidy, coral_df_update_tidy)
+
+```
+
+
+```{r}
+# Save the combined data, overwriting the previous
+# data_outputs/coral_tidy_2024.csv
+
+write_csv(coral_df_tidy_combined, here("data_outputs", "coral_tidy_2024.csv"))
+
+```
+

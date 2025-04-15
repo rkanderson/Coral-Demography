@@ -82,8 +82,15 @@ coral_df_longer <- coral_df %>%
   select(-starts_with("dyn_")) %>% 
   select(-fusion_group, -fission_group)
 
+# make sure that coral_number is at the front (left-most)
+coral_df_longer <- coral_df_longer %>% 
+  select(c(coral_number, site, habitat, transect, taxa, x, y, z, year), everything())
+
+
 year_index <- which(names(coral_df_longer) == "year")
 coral_df_longer <- coral_df_longer %>%  mutate(across((year_index+1):last_col(), as.character))
+
+
 
 # pivot longer all columns from "year" onwards
 #  names go to a column called "key" and the values go to a column called "value"

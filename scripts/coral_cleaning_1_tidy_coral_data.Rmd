@@ -94,10 +94,10 @@ There are a lot of columns we don't need
 # First, we only want to select the columns we're interested in:
 # site, habitat, transect, taxa, x, y, z, lYYYY, wYYY, hYYYY, obsYYYY, note_YYYY, note_YYYY_extra
 # Make sure that for the column names with years, the exact format is followed.
-# We'll also add a coral_number field for each row of the raw data frame, just so we can track each coral by its distinct identity
+# OUTDATED: We'll also add a coral_number field for each row of the raw data frame, just so we can track each coral by its distinct identity
 coral_df <- coral_df_raw %>% 
-  mutate(coral_number = row_number()) %>%
-  select(coral_number, site, habitat, transect, taxa, x, y, z, 
+  # mutate(coral_number = row_number()) %>%
+  select(site, habitat, transect, taxa, x, y, z, 
          matches("l[0-9]{4}"), 
          matches("w[0-9]{4}"), 
          matches("h[0-9]{4}"), 
@@ -222,7 +222,7 @@ coral_df_tidy_transect_renamed <- coral_df_tidy %>%
 Let's store this data file so that we can use it later.
 
 ```{r}
-write_csv(coral_df_tidy_transect_renamed, here("data", "cleaning_outputs", "coral_tidy_2024.csv"))
+write_csv(coral_df_tidy_transect_renamed, here("data_outputs", "coral_tidy_2024.csv"))
 ```
 
 
