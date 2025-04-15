@@ -1,0 +1,82 @@
+
+He wants to have a spreadsheet for entering in data that is easy to use. It should be filtered to only get corals that are still alive. It should have fields Site, Hab, Tran, Taxa, X, Y, Z, W23, L23, H23, (Notes 24?) And then blank fields for L24, W24, H24, Notes24
+
+data_outputs/coral_clean_wide_2024.csv
+
+```{r}
+# Clear env
+rm(list=ls())
+
+# Load Libs
+library(tidyverse)
+library(here)
+
+# Load the data
+coral_df_wide <- read_csv(here("data_outputs", "coral_clean_wide_2024.csv"))
+```
+We're gonna grab the cols
+[1] "coral_number" "site" "habitat" "transect"
+Г51 "taxa" "x" "y "z
+[89] "length_2023" "width_2023' "height_2023" "observer 2023"
+Г931 "note_2023" "note_ _extra_2023" "growth_ratio_2023" "dynamics_2023"
+```{r}
+# We're gonna get the columns
+coral_df_for_datasheet <- coral_df_wide %>% 
+  select(coral_number, site, habitat, transect, taxa, x, y, z, length_2023, width_2023, height_2023, dynamics_2023)
+
+# Now filter to only keep rows where length_2023 is not "Na", "D", or "Dead"
+coral_df_for_datasheet <- coral_df_for_datasheet %>% 
+  filter(length_2023 != "Na", length_2023 != "D", length_2023 != "Dead")
+```
+
+Convert length_2023, width_2023, height_2023 to numeric
+```{r}
+coral_df_for_datasheet <- coral_df_for_datasheet %>% 
+  mutate(
+    length_2023 = as.numeric(length_2023),
+    width_2023 = as.numeric(width_2023),
+    height_2023 = as.numeric(height_2023)
+  )
+
+```
+Rename to be single letter, length_2023 -> L23, width_2023 -> W23, height_2023 -> H23,
+
+```{r}
+coral_df_for_datasheet <- coral_df_for_datasheet %>% 
+  rename(
+    L23 = length_2023,
+    W23 = width_2023,
+    H23 = height_2023,
+    Dyn23 = dynamics_2023
+  )
+```
+
+
+And then blank fields for L24, W24, H24, Notes_2024
+```{r}
+coral_df_for_datasheet <- coral_df_for_datasheet %>% 
+  mutate(
+    L24 = NA,
+    W24 = NA,
+    H24 = NA,
+    Notes_2024 = NA
+  )
+
+```
+
+Save this to a csv file
+```{r}
+write_csv(coral_df_for_datasheet, here("data_outputs", "coral_data_entry_sheet.csv"))
+```
+
+
+DEBUG
+```{r}
+# filter to get any of the rows that have an NA dynamic
+na_dyn <- coral_df_for_datasheet %>% 
+  filter(is.na(Dyn23))
+```
+
+```{r}
+```
+
