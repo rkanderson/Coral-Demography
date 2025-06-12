@@ -2,8 +2,6 @@
 
 This repository contains scripts for cleaning and standardizing coral demography survey data from the Moorea Coral Reef (MCR) Long Term Ecological Research (LTER) site in Mo'orea, French Polynesia. The dataset spans surveys conducted between 2013 and 2024. These scripts focus on preparing the raw field data for downstream analysis by addressing inconsistencies, standardizing formats, and ensuring data integrity.
 
-Excellent — your notes are very clear. Let’s build this section accordingly:
-
 ---
 
 ## Repository Structure and Files
@@ -11,14 +9,27 @@ Excellent — your notes are very clear. Let’s build this section accordingly:
 Below is an overview of the repository contents and their organization:
 
 ```
-Coral Demography.Rproj
-README.md
-data_outputs/
-data_raw/
-data_raw/data_raw_2024_sheets/
-explorations/
-figures/
-scripts/
+project/
+├── Coral Demography.Rproj         # RStudio project file
+├── README.md                      # Project documentation (this file)
+├── data_raw/                      # Raw input data
+│   ├── coral_raw_wide_2023.xlsx   # 2013-2023 raw data (site tabs only valid)
+│   ├── coral_raw_wide_2023_bad_and_duplicate_rows_removed.xlsx # Manually pre-cleaned input
+│   └── data_raw_2024_sheets/      # 2024 survey data (individual Excel sheets)
+├── data_outputs/                  # Cleaned and processed data files
+│   ├── coral_clean_wide_human-friendly.xlsx  # Wide-format Excel (for manual inspection)
+│   ├── coral_tidy_2024.csv        # Tidy cleaned data (no dynamics)
+│   └── coral_tidy_2024_with_dynamics.csv # Tidy cleaned data with dynamic fields
+├── explorations/                  # Exploratory R Markdown notebooks
+│   └── exX.Y.Z-<title>.Rmd        # Hierarchically numbered exploration files
+├── figures/                       # Output plots and graphics
+└── scripts/                       # Cleaning pipeline scripts
+    ├── coral_cleaning_1_tidy_coral_data.Rmd
+    ├── coral_cleaning_1.3_create_coral_2024_tidy.R
+    ├── coral_cleaning_1.5_add_new_data.Rmd
+    ├── coral_cleaning_2_add_coral_dynamics.Rmd
+    ├── coral_cleaning_3_widen_coral_data.Rmd
+    └── coral_cleaning_4_make_excel.Rmd
 ```
 
 ### Top-Level Files
@@ -104,7 +115,7 @@ The data cleaning pipeline consists of a sequence of R scripts that should be ru
 > **Note:**  
 > An automated master script has not yet been implemented; for now, users should manually execute each script in sequence. When running the pipeline, always verify that each script is reading the correct output file produced by the previous step — this is how data flows between scripts. While not fully ideal, this approach was the most practical way to structure the pipeline given R’s environment management.
 
-The files and their respective roles are described in detail above in the [Scripts](scripts) section.
+The files and their respective roles are described in detail above in the files section.
 
 ---
 
