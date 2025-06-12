@@ -16,6 +16,7 @@ coral_df_tidy <- read_csv(here("data_outputs", "coral_tidy_2024.csv"))
 coral_df_update_tidy <- read_csv(here("data_outputs", "coral_data_update_tidy_2024.csv"))
 
 
+
 ```
 
 ```{r}
@@ -33,7 +34,49 @@ coral_df_update_tidy <- coral_df_update_tidy %>%
 # Bind the two together
 coral_df_tidy_combined <- bind_rows(coral_df_tidy, coral_df_update_tidy)
 
+
 ```
+
+
+```{r}
+### DEBUG: Inspecting for duplicate rows
+# let's see coral_number LTER4_OR_T03_Acr_0.75_0_0, except there's no coral number field, so we need to
+# individually filter for all the fields
+# coral_df_tidy_combined %>% filter(
+#   site == "LTER4",
+#   habitat == "OR",
+#   transect == "T03",
+#   taxa == "Acr",
+#   x == 0.75,
+#   y == 0,
+#   z == 0
+# )
+
+# # Do same but for coral_df_tidy
+# coral_df_tidy %>% filter(
+#   site == "LTER4",
+#   habitat == "OR",
+#   transect == "T03",
+#   taxa == "Acr",
+#   x == 0.75,
+#   y == 0,
+#   z == 0
+# )
+
+## The bug is here -- coral_df_tidy ALREADY has the strange duplicate rows
+
+# Do same but for coral_df_update_tidy
+# coral_df_update_tidy %>% filter(
+#   site == "LTER4",
+#   habitat == "OR",
+#   transect == "T03",
+#   taxa == "Acr",
+#   x == 0.75,
+#   y == 0,
+#   z == 0
+# )
+```
+
 
 
 ```{r}

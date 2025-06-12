@@ -17,8 +17,10 @@ library(readxl)
 # We'll need to load all the data from these individual sheets and combine them with each other
 # in order to obtain a coral_df_raw
 
+RAW_DATA_FILEPATH <- here("data_raw", "coral_raw_wide_2024_bad_and_duplicate_rows_removed.xlsx")
+
 # Get the column names of each sheet in the file that matches the pattern "LTERXAA"
-sheets_habitats <- excel_sheets(here("data_raw", "coral_raw_wide_2024.xlsx")) %>% 
+sheets_habitats <- excel_sheets(RAW_DATA_FILEPATH) %>% 
   str_subset("^LTER[0-9]{1}[A-Z]{2}$")
 
 COLUMN_LIMIT <- 100 # The maximum number of columns we'll need to load from each sheet.
@@ -37,7 +39,7 @@ COLUMN_LIMIT <- 100 # The maximum number of columns we'll need to load from each
 #   map(~clean_names(.)) %>%
 #   reduce(bind_rows)
 coral_habitats_raw_cleaned_names <- sheets_habitats %>%
-  map(~ read_excel(here("data_raw", "coral_raw_wide_2024.xlsx"), 
+  map(~ read_excel(RAW_DATA_FILEPATH, 
                    sheet = .x, range = cell_cols(c(1, COLUMN_LIMIT)))
       ) %>%
   map(~ mutate_all(., as.character)) %>%
@@ -115,6 +117,48 @@ coral_df <- coral_df %>%
 
 ```
 
+```{r}
+###  DEBUG
+# Let's spot instances of the same coral being tracked in multiple rows
+# To do this we can group by site, habitat, transect, taxa, x, y, z, get the counts of each, and filter to only get the ones with counts > 1
+duplicate_corals <- coral_df %>% 
+  group_by(site, habitat, transect, taxa, x, y, z) %>% 
+  summarise(count = n()) %>% 
+  filter(count > 1) %>% 
+  ungroup() %>% 
+  arrange(desc(count)) %>% 
+  select(-count)
+
+# Now, let's show the rows of the original data frame that match these corals, and show the duplicate rows side by side
+# loop through the coral_df rows, and check if any of them match a row inside duplicate_corals
+# initialize an object to track collected duplicate rows
+duplicate_rows_collection <- data.frame()
+for(coral in 1:nrow(coral_df)){
+  # Get the row of coral_df
+  coral_row <- coral_df[coral,]
+  # Get the row of duplicate_corals
+  coral_row_duplicate <- duplicate_corals %>% 
+    filter(site == coral_row$site,
+           habitat == coral_row$habitat,
+           transect == coral_row$transect,
+           taxa == coral_row$taxa,
+           x == coral_row$x,
+           y == coral_row$y,
+           z == coral_row$z)
+  # If the row exists, add the rows to the duplicate_rows_collection
+  if(nrow(coral_row_duplicate) > 0){
+    # Add the row to the collection
+    duplicate_rows_collection <- bind_rows(duplicate_rows_collection, coral_row)
+  }
+}
+
+# write to file system
+write_csv(duplicate_rows_collection, here("data_outputs", "DEBUG_coral_duplicates.csv"))
+
+```
+
+```{r}
+```
 
 
 
@@ -143,6 +187,32 @@ coral_df_tidy <- coral_df_tidy %>%
   pivot_wider(names_from = key, values_from = value) %>%
   rename(length = l, width = w, height = h, observer = obs)
 ```
+```{r}
+### DEBUG: We're getting List Columns! Let's check it out.
+# Let's get a comprehensive list of all our list columns
+# Grab all that are LTER4_OR_T03_Acr_0.75_0_0
+# coral_df_tidy %>% filter(
+#   site == "LTER4",
+#   habitat == "OR",
+#   transect == "T03",
+#   taxa == "Acr",
+#   x == 0.75,
+#   y == 0,
+#   z == 0
+# )
+# YES CONFIRMED, we have list columns,
+# let's get them all so we can see exactly which is which
+
+# list_cols <- coral_df_tidy %>% 
+#   select(where(~is.list(.x))) %>% 
+#   colnames()
+
+# This didn't work, let's try another method
+# Get all the columns that are list columns
+# list_cols <- sapply(coral_df_tidy, is.list)
+# names(coral_df_tidy)
+```
+
 
 So we aren't getting any list-cols! That's good.
 

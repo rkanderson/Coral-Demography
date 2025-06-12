@@ -44,27 +44,19 @@ coral_ts <- coral_df_tidy %>%
 
 ```{r}
 ### Catch the Duplicates!
-# glimpse(coral_df_tidy)
-# duplicates(coral_df_tidy, key=coral_number, index=year)
-# 
-# coral_df_tidy %>%
+glimpse(coral_df_tidy)
+duplicates(coral_df_tidy, key=coral_number, index=year)
+
+# duplicates <- coral_df_tidy %>%
 #   count(coral_number, year) %>%
 #   filter(n > 1)
 # 
 # # Filter for the coral_numbers being equal to
-# # LTER1 BR P02 Poc 1.2_60_5
-# # LTER1_BR_P03_Рос_1.2_96_20
-# # LTER1_BR_T03_Por_2.53_28_0
-# # LTER1_ BR T03 Por_3.86_92_37
 # # LTER4_OR_T03_Acr_0.75_0_0
-# # and the year=2024
-# coral_df_tidy %>%
-#   filter(coral_number == "LTER1_BR_P02_Poc_1.2_60_5" | 
-#            coral_number == "LTER1_BR_P03_Poc_1.2_96_20" |
-#            coral_number == "LTER1_BR_T03_Por_2.53_28_0" |
-#            coral_number == "LTER1_BR_T03_Por_3.86_92_37" |
-#            coral_number == "LTER4_OR_T03_Acr_0.75_0_0") %>%
-#   filter(year==2024)
+
+# lter4_or_t03_acr_0.75_0_0 <- coral_df_tidy %>%
+#   filter(coral_number == "LTER4_OR_T03_Acr_0.75_0_0") %>%
+#   select(year, length, width, height, note, note_extra)
 
 ```
 
