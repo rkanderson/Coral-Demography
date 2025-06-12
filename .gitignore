@@ -3,3 +3,12 @@
 .RData
 .Ruserdata
 .DS_Store
+
+# Ignore all files in the data_outputs and figures directories
+data_outputs/*
+figures/*
+
+
+# But do not ignore the READMEs in these directories (or any instruction files)
+!data_outputs/README.md
+!figures/README.md
