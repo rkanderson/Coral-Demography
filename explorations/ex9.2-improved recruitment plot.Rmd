@@ -1,0 +1,209 @@
+**New Needs**
+
+- Show Recruitment as a per unit area (each transect is 5 square meters)
+- Separate graphs for Habitat (Lagoon vs Outer Slope) — or BR vs OR
+- Mohsen: plot the 4 replicate recruitment densities for each area (1 for each transect), and then have a curve representing the mean + a confidence interval.
+- You would do this for site and habitat.
+- (Possible Concern) Ensuring that individuals fissioning into smaller ones (like Por) gets shown…. though maybe this ought not to be considered recruitment
+- Mohsen: says to just take into account the 4 transects T01...T04 for each. ignore the "plots" (P01, P02, etc)
+
+
+```{r environment}
+# Clean en√
+rm(list=ls())
+
+# Load libraries
+library(tidyverse)
+library(here)
+```
+
+
+```{r load data}
+# Loading data
+# Let's get it from data_outputs/coral_tidy_2024_with_dynamics.csv
+
+coral_df <- read_csv(here("data_outputs", "coral_tidy_2024_with_dynamics.csv"))
+
+# Note: there was one coral erroneously entered in with taxa of "A" instead of "Acr", let's quickly fix that
+coral_df <- coral_df %>% 
+  mutate(taxa = ifelse(taxa == "A", "Acr", taxa))
+
+
+```
+
+
+
+## Color Schemes
+A note on color schemes, there is some particularity about which colors correspond to which coral taxa
+
+
+Poc is pure red (255,0, 0) 
+Por 0,168,48
+Acr is 11,31,143
+Millipora is orange
+
+```{r color-scheme}
+# Define custom colors for coral taxa
+coral_colors <- c(
+  "Poc" = rgb(255, 0, 0, maxColorValue = 255),      # Pure Red
+  "Por" = rgb(0, 168, 48, maxColorValue = 255),     # Green
+  "Acr" = rgb(11, 31, 143, maxColorValue = 255),     # Blue
+  "Mil" = rgb(255, 165, 0, maxColorValue = 255)    # Orange for Millipora
+)
+```
+
+## Recruitment Summarization
+
+- get the recruitment grouped by site, transect, taxa, habitat, and year
+- Then we'll sum dyn_recruitment for each group to get a raw count of recruits
+- Then we'll filter the resulting data frame to keep only transects that are named T01, T02, T03, or T04
+- Then we'll create a new column called recruitment_density which is recruitment divided by 5 (since each transect is 5 square meters)
+- (Then when we visualize, we can show separate graphs for each site/habitat combination, and add a regression line with confidence intervals)
+
+```{r}
+recruitment_df <- coral_df %>% 
+  group_by(site, transect, taxa, habitat, year) %>% 
+  summarize(recruitment = sum(dyn_recruitment)) %>% 
+  filter(transect %in% c("T01", "T02", "T03", "T04")) %>%
+  mutate(recruitment_density = recruitment / 5) %>%
+  ungroup()
+
+```
+
+
+## Plotting
+
+Using our recruitment_df, we'll have 4 datapoints per year per species
+Color by species
+Put the year on the x axis, have ticks spaced by two
+
+```{r}
+recruitment_df %>% 
+  ggplot(aes(x = factor(year), y = recruitment_density, color = taxa)) +
+  geom_point() +
+  facet_grid(rows = vars(site), cols = vars(substr(transect, 1, 2))) + # facet by site and habitat (BR vs OR)
+  scale_x_discrete(breaks = seq(2013, 2024, by = 2)) +  # Set x-axis breaks every 2 years
+  scale_color_manual(values = coral_colors) +  # Use custom coral colors
+  labs(
+    title = "Recruitment Density by Year, Taxa, Site, and Habitat",
+    x = "Year",
+    y = "Recruitment Density (recruits per square meter)"
+  ) +
+  theme_minimal()
+
+
+
+
+# # Make a function that produces a plot like this but for one particular site
+plot_recruitment_by_site <- function(site_name, taxa_name) {
+  recruitment_df %>%
+    filter(site == site_name) %>%
+    filter(taxa == taxa_name) %>% 
+    ggplot(aes(x = factor(year), y = recruitment_density)) +
+    geom_point() +
+    facet_wrap(~substr(habitat, 1, 2)) + # facet by habitat (BR vs OR)
+    scale_x_discrete(breaks = seq(2013, 2024, by = 2)) +  # Set x-axis breaks every 2 years
+    scale_color_manual(values = coral_colors) +  # Use custom coral colors
+    labs(
+      title = paste("Recruitment Density of", taxa_name, "at", site_name),
+      x = "Year",
+      y = "Recruitment Density (recruits per square meter)"
+    ) +
+    theme_minimal()
+}
+# 
+# invoke function for all 4 sites, LTER1, 2, 4, 5
+# and all 4 taxa: Poc, Por, Acr, Mil
+plot_recruitment_by_site("LTER1", "Por")
+
+
+# Regenerate the functions one more time, but add a geom_smooth() layer to show a trend line with confidence intervals
+plot_recruitment_by_site_with_smooth <- function(site_name, taxa_name) {
+  recruitment_df %>%
+    filter(site == site_name) %>%
+    filter(taxa == taxa_name) %>% 
+    ggplot(aes(x = year, y = recruitment_density)) +
+    geom_point() +
+    geom_smooth(method = "loess", se = TRUE, color = "blue", fill = "lightblue") + # Add a smooth trend line with confidence interval
+    facet_wrap(~substr(habitat, 1, 2)) + # facet by habitat (BR vs OR)
+    scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +  # Set x-axis breaks every 2 years
+    scale_color_manual(values = coral_colors) +  # Use custom coral colors
+    labs(
+      title = paste("Recruitment Density of", taxa_name, "at", site_name),
+      x = "Year",
+      y = "Recruitment Density (recruits per square meter)"
+    ) +
+    theme_minimal()
+}
+
+# Test
+plot_recruitment_by_site_with_smooth("LTER1", "Por")
+plot_recruitment_by_site_with_smooth("LTER5", "Poc")
+
+
+# plot_recruitment_by_site_with_error <- function(site_name, taxa_name) {
+#   # Summarize means and SE by year and habitat
+#   summary_df <- recruitment_df %>%
+#     filter(site == site_name, taxa == taxa_name) %>%
+#     group_by(year, habitat) %>%
+#     summarise(
+#       mean_recruitment = mean(recruitment_density, na.rm = TRUE),
+#       se_recruitment = sd(recruitment_density, na.rm = TRUE) / sqrt(n()),
+#       .groups = "drop"
+#     )
+#   
+#   ggplot(summary_df, aes(x = year, y = mean_recruitment)) +
+#     geom_point(size = 3, color = "blue") +
+#     geom_errorbar(aes(ymin = mean_recruitment - se_recruitment,
+#                       ymax = mean_recruitment + se_recruitment),
+#                   width = 0.2, color = "blue") +
+#     facet_wrap(~substr(habitat, 1, 2)) +
+#     scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +
+#     labs(
+#       title = paste("Mean Recruitment Density of", taxa_name, "at", site_name),
+#       x = "Year",
+#       y = "Recruitment Density (recruits per m²)"
+#     ) +
+#     theme_minimal()
+# }
+# 
+# # Test this
+# plot_recruitment_by_site_with_error("LTER1", "Por")
+
+
+```
+
+
+
+
+```{r plot recruitment OLD}
+
+# recruitment_df %>% 
+#   ggplot(aes(x = factor(year), y = recruitment, color = taxa)) +
+#   geom_line(aes(group = taxa)) +  # ensure lines connect within taxa
+#   geom_point() +
+#   facet_wrap(~site) +
+#   scale_x_discrete(breaks = seq(2013, 2024, by = 2)) +  # Set x-axis breaks every 4 years
+#   labs(
+#     title = "Recruitment by Year, Taxa, and Site",
+#     x = "Year",
+#     y = "Number of Recruits"
+#   ) +
+#   theme_minimal()
+# 
+# # Regenarate with coral color scheme
+# recruitment_df %>% 
+#   ggplot(aes(x = factor(year), y = recruitment, color = taxa)) +
+#   geom_line(aes(group = taxa)) +  # ensure lines connect within taxa
+#   geom_point() +
+#   facet_wrap(~site) +
+#   scale_x_discrete(breaks = seq(2013, 2024, by = 2)) +  # Set x-axis breaks every 4 years
+#   scale_color_manual(values = coral_colors) +  # Use custom coral colors
+#   labs(
+#     title = "Recruitment by Year, Taxa, and Site",
+#     x = "Year",
+#     y = "Number of Recruits"
+#   ) +
+#   theme_minimal()
+
+```

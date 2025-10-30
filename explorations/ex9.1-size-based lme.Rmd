@@ -1,0 +1,135 @@
+
+In this notebook, I intend to create an LME model for predicting coral size
+in year t+1 based on coral size in year t, while accounting for random effects
+based on the transect sampled.
+
+```{r setup}
+# Clean Env
+rm(list=ls())
+# Load libs
+library(tidyverse)
+library(here)
+# load lme library
+library(nlme)
+
+# Load data
+coral_df <- read_csv(here("data_outputs", "coral_tidy_2024_with_dynamics.csv"))
+```
+
+First off we're going to need to create a size calculated field.
+We quantify size as the average of the 3 dimensions.
+
+```{r}
+# real quick convert the length, width, height columns to numeric
+coral_df <- coral_df %>%
+  mutate(across(c(length, width, height), as.numeric))
+
+coral_df <- coral_df %>%
+  mutate(size = (length + width + height) / 3)
+
+```
+
+Next we're going to need to have each coral observation not only have its size
+in the current observation, but also its previously observed size (if one does exist)
+
+To do this, we're going to need to group by transect and coral_number (it's unique identifier), then arrange by year,
+then use the lag function to get the previous size.
+
+```{r}
+coral_df_lagged <- coral_df %>%
+  group_by(transect, coral_number) %>%
+  arrange(year) %>%
+  mutate(prev_size = lag(size)) %>%
+  ungroup()
+```
+
+Let's verify that this worked
+
+```{r}
+# Look at a specific transect and coral number
+# Let's see in year 2014, coral_number=LTER1_BR_P01_Acr_4.15_50_53,
+# this coral shrank from 2013
+coral_df_lagged %>%
+  filter(coral_number == "LTER1_BR_P01_Acr_4.15_50_53") %>%
+  select(year, size, prev_size)
+
+# Looks good!
+
+```
+
+One more step we'll need to take before creating the lme model:
+- Some transects have the same names across sites, therefore we
+need to pair the transect with the site to create a unique identifier.
+Let's call this site_transect
+
+```{r}
+coral_df_lagged <- coral_df_lagged %>%
+  mutate(site_transect = str_c(site, transect, sep = "_"))
+```
+
+Now we can go ahead with creating our lme model.
+The random-effect will be site_transect
+
+We'll also want to separate our data into 2 groups to run the model on:
+1) 2013-2019 (prior to mass bleaching event)
+2) 2020 and onwards (after the bleaching event)
+
+```{r}
+# Filter out to only include rows where both size and prev_size are not NA
+coral_df_for_lme <- coral_df_lagged %>%
+  filter(!is.na(prev_size) & !is.na(size))
+
+coral_lme_pre_bleaching <- coral_df_for_lme %>%
+  filter(year <= 2019)
+
+coral_lme_post_bleaching <- coral_df_for_lme %>%
+  filter(year >= 2020)
+
+
+# Create the lme model
+lme_model_pre <- lme(size ~ prev_size, random = ~1 | site_transect, data = coral_lme_pre_bleaching)
+lme_model_post <- lme(size ~ prev_size, random = ~1 | site_transect, data = coral_lme_post_bleaching)
+```
+
+Now let's create a visualization to compare the data and model results
+for the pre and post bleaching years
+
+```{r}
+
+coral_colors <- c(
+  "Poc" = rgb(255, 0, 0, maxColorValue = 255),      # Pure Red
+  "Por" = rgb(0, 168, 48, maxColorValue = 255),     # Green
+  "Acr" = rgb(11, 31, 143, maxColorValue = 255),     # Blue
+  "Mil" = rgb(255, 165, 0, maxColorValue = 255)    # Orange for Millipora
+)
+
+# Create a function to plot the data and model results
+plot_lme_results <- function(data, model, title) {
+  # Create a sequence of prev_size values for predictions
+  prev_size_seq <- seq(min(data$prev_size, na.rm = TRUE), max(data$prev_size, na.rm = TRUE), length.out = 100)
+  
+  # Create a new data frame for predictions
+  pred_data <- data.frame(prev_size = prev_size_seq)
+  
+  # Get the fixed effects predictions
+  pred_data$predicted_size <- predict(model, newdata = pred_data, level = 0) # Here level=0 means only fixed effects are used in model outputs.
+  
+  # Plot the data and the model predictions
+  ggplot(data, aes(x = prev_size, y = size, color = taxa)) +
+    geom_point(alpha = 0.5) +
+    geom_line(data = pred_data, aes(x = prev_size, y = predicted_size), color = "blue", size = 1) +
+    scale_x_log10(labels = scales::scientific) +
+    scale_y_log10(labels = scales::scientific) +
+    scale_color_manual(values = coral_colors) +
+    labs(title = title, x = "Size at Year y", y = "Size at Year y+1") +
+    theme_minimal()
+  
+   
+}
+
+# Plot pre-bleaching results
+plot_lme_results(coral_lme_pre_bleaching, lme_model_pre, "Pre-Bleaching (2013-2019)")
+
+# Plot post-bleaching results
+plot_lme_results(coral_lme_post_bleaching, lme_model_post, "Post-Bleaching (2020-2024)")
+```

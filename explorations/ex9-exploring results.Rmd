@@ -1,0 +1,212 @@
+
+In this exploration, we'll produce the following
+- [ ]  Plot of recruitment each year for each genera at each site
+- [ ]  regressions analyses of growth as a function of size for each genera at each site, grouping 2013-2019 (before bleaching) vs. 2020-24 (after bleaching)
+- [ ]  Mortality as a function of size …same as #2.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r environment}
+# Clean en√
+rm(list=ls())
+
+# Load libraries
+library(tidyverse)
+library(here)
+```
+
+
+```{r load data}
+# Loading data
+# Let's get it from data_outputs/coral_tidy_2024_with_dynamics.csv
+
+coral_df <- read_csv(here("data_outputs", "coral_tidy_2024_with_dynamics.csv"))
+
+# Note: there was one coral erroneously entered in with taxa of "A" instead of "Acr", let's quickly fix that
+coral_df <- coral_df %>% 
+  mutate(taxa = ifelse(taxa == "A", "Acr", taxa))
+
+
+```
+
+## Color Schemes
+A note on color schemes, there is some particularity about which colors correspond to which coral taxa
+
+
+Poc is pure red (255,0, 0) 
+Por 0,168,48
+Acr is 11,31,143
+
+Millipora was not present before, so we'll come up with a new color
+
+```{r}
+# Define custom colors for coral taxa
+coral_colors <- c(
+  "Poc" = rgb(255, 0, 0, maxColorValue = 255),      # Pure Red
+  "Por" = rgb(0, 168, 48, maxColorValue = 255),     # Green
+  "Acr" = rgb(11, 31, 143, maxColorValue = 255),     # Blue
+  "Mil" = rgb(255, 165, 0, maxColorValue = 255)    # Orange for Millipora
+)
+```
+
+
+
+Let's now plot recruitment each year for each genera at each site
+```{r plot recruitment}
+
+recruitment_df <- coral_df %>% 
+  group_by(site, taxa, year) %>% 
+  summarize(recruitment = sum(dyn_recruitment))
+
+# Let's now plot this where 
+# the color is set to taxa
+# the facet is set to site
+# recruitment_df %>% 
+#   ggplot(aes(x = factor(year), y = recruitment, color = taxa)) +
+#   geom_line(aes(group = taxa)) +  # ensure lines connect within taxa
+#   geom_point() +
+#   facet_wrap(~site) +
+#   labs(
+#     title = "Recruitment by Year, Taxa, and Site",
+#     x = "Year",
+#     y = "Number of Recruits"
+#   ) +
+#   theme_minimal()
+
+# Recreate plot, but with year labels every 2 years instead of every year
+recruitment_df %>% 
+  ggplot(aes(x = factor(year), y = recruitment, color = taxa)) +
+  geom_line(aes(group = taxa)) +  # ensure lines connect within taxa
+  geom_point() +
+  facet_wrap(~site) +
+  scale_x_discrete(breaks = seq(2013, 2024, by = 2)) +  # Set x-axis breaks every 4 years
+  labs(
+    title = "Recruitment by Year, Taxa, and Site",
+    x = "Year",
+    y = "Number of Recruits"
+  ) +
+  theme_minimal()
+
+# Regenarate with coral color scheme
+recruitment_df %>% 
+  ggplot(aes(x = factor(year), y = recruitment, color = taxa)) +
+  geom_line(aes(group = taxa)) +  # ensure lines connect within taxa
+  geom_point() +
+  facet_wrap(~site) +
+  scale_x_discrete(breaks = seq(2013, 2024, by = 2)) +  # Set x-axis breaks every 4 years
+  scale_color_manual(values = coral_colors) +  # Use custom coral colors
+  labs(
+    title = "Recruitment by Year, Taxa, and Site",
+    x = "Year",
+    y = "Number of Recruits"
+  ) +
+  theme_minimal()
+
+```
+
+## Growth as a function of coral size (ellipsoid model)
+
+To match the pattern in the previous paper, we want to be able to quantify the surface area of each coral
+So let's go ahead then and do that.
+
+Let's add a calculated field for surface area , treating the coral colony as an ellipsoid
+
+```{r}
+# Create calculated field, call it ellipsoid_surface_area
+# derive from length, width, height
+coral_df <- coral_df %>%
+  mutate(
+    length = as.numeric(length),
+    width = as.numeric(width),
+    height = as.numeric(height),
+    ellipsoid_surface_area = 4 * pi * (( (length * width)^1.6 + (length * height)^1.6 + (width * height)^1.6 ) / 3)^(1/1.6)
+  )
+
+```
+
+We've also thus far been using growth_ratio as a quotient of averages across dimensions, so we can also make a size quantifier with avg dimension
+
+```{r}
+coral_df <- coral_df %>%
+  mutate(
+    avg_dimension = (length + width + height) / 3
+  )
+```
+
+```{r}
+# Let's go ahead now and make that size plot
+# Let's facet by site, color by taxa, include gaps of 2 between years
+coral_df %>%
+  filter(!is.na(growth_ratio) & growth_ratio > 0 & growth_ratio < 80 & !is.na(avg_dimension) & avg_dimension > 0) %>%
+  ggplot(aes(x = avg_dimension, y = growth_ratio, color = taxa)) +
+  geom_point(alpha = 0.6) +
+  # geom_smooth(method = "lm", se = FALSE) +  # Add linear regression line
+  facet_wrap(~site) +
+  scale_color_manual(values = coral_colors) +  # Use custom coral colors
+  labs(
+    title = "Growth Ratio vs. Average Dimension by Site and Taxa",
+    x = "Average Dimension (cm)",
+    y = "Growth Ratio"
+  ) +
+  theme_minimal()
+
+```
+
+Dang that's not telling us a whole lot.
+
+Let's try using the ellipsoid surface area on the x
+
+```{r}
+coral_df %>%
+  filter(!is.na(growth_ratio) & growth_ratio > 0 & growth_ratio < 80 & !is.na(ellipsoid_surface_area) & ellipsoid_surface_area > 0) %>%
+  ggplot(aes(x = ellipsoid_surface_area, y = growth_ratio, color = taxa)) +
+  geom_point(alpha = 0.6) +
+  # geom_smooth(method = "lm", se = FALSE) +  # Add linear regression line
+  facet_wrap(~site) +
+  scale_color_manual(values = coral_colors) +  # Use custom coral colors
+  labs(
+    title = "Growth Ratio vs. Ellipsoid Surface Area by Site and Taxa",
+    x = "Ellipsoid Surface Area (cm²)",
+    y = "Growth Ratio"
+  ) +
+  theme_minimal()
+```
+
+
+
+Eh not telling us much still. Let's leave this one alone for now.
+
+
+## Mortality
+
+So first off lets graph dyn_death as a function of size, across the sites. Color by species.
+dyn_death will be 0 or 1, so we need some vertical and horizontal jitter to make them more visible.
+
+We shouldn't be including every single observation here, only concrete instances when a coral was observed. or when an absence of it was observed, and that absence is labeled as death
+
+ALERT: rows that have dyn_death frequently lack length, width, height values. Thus the data must be transformed to include the previously measured dimensions in observations that are indicative of mortality.
+
+```{r}
+coral_df %>%
+  filter(dyn_death == 1 | (dyn_death == 0 & !is.na(length) & !is.na(width) & !is.na(height))) %>%
+  ggplot(aes(x = ellipsoid_surface_area, y = dyn_death, color = taxa)) +
+  geom_jitter(width = 0, height = 0.1, alpha = 0.6, size=0.001) +
+  facet_wrap(~site) +
+  scale_color_manual(values = coral_colors) +  # Use custom coral colors
+  scale_x_log10(labels = scales::scientific) +  # Logarithmic x-axis with scientific notation
+  labs(
+    title = "Mortality (dyn_death) vs. Surface Area by Site and Taxa",
+    x = "Surface Area (cm², log scale)",
+    y = "Mortality (dyn_death)"
+  ) +
+  theme_minimal()
+```
+
+
+
+
+
+
+
