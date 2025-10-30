@@ -90,14 +90,15 @@ coral_df_no_dead_selected_cols <- coral_df_no_dead_selected_cols %>%
 
 
 # Now we'll add some blank fields for data entry for the coming survey year
-# (2025)
+# (2025).
 coral_df_for_datasheet <- coral_df_no_dead_selected_cols %>% 
   mutate(
-    L25 = NA,
-    W25 = NA,
-    H25 = NA,
-    Notes25 = NA
+    L25 = "",
+    W25 = "",
+    H25 = "",
+    Notes25 = ""
   )
+
 
 
 # Finally we'll save this to an excel spreadsheet where there's a separate tab
@@ -111,10 +112,12 @@ datasheet_filepath <- here("data_outputs", "coral_data_entry_datasheet_2025.xlsx
 unique_combos <- coral_df_for_datasheet %>%
   select(Site, Hab, Tran) %>%
   distinct()
-# 
+
+# Create a list to store the data contents for each tab
+# the key will be set to the tab title (Site_Hab_Tran)
 data_list <- list()
 
-wb <- createWorkbook()
+
 for (i in 1:nrow(unique_combos)) {
   site_i <- unique_combos$Site[i]
   hab_i <- unique_combos$Hab[i]
@@ -122,46 +125,91 @@ for (i in 1:nrow(unique_combos)) {
 
   sheet_name <- paste(site_i, hab_i, tran_i, sep = "_")
   #
-  # Filter data for this combo
+  # Filter data for this combo, deselecting the Site, Hab, Tran columns afterwards.
   data_i <- coral_df_for_datasheet %>%
-    filter(Site == site_i, Hab == hab_i, Tran == tran_i)
+    filter(Site == site_i, Hab == hab_i, Tran == tran_i) %>% 
+    select(-Site, -Hab, -Tran)
 
+  rownames(data_i) <- NULL
+  
   # append to data_list
   data_list[[sheet_name]] <- data_i
 
-
-  # Add worksheet
-  addWorksheet(wb, sheet_name)
-  
-  # print(sheet_name)
-  # print(dim(data_i))
-  # print(rownames(data_i))
-  
-  rownames(data_i) <- NULL
-  
-
-  # Write data to worksheet
-  writeData(wb, sheet = sheet_name, x = data_i)
 }
 
-## DEBUG
-# display all the colnames for all data_list items
-for (name in names(data_list)) {
-  cat("Sheet:", name, "\n")
-  print(colnames(data_list[[name]]))
-  cat("\n")
-}
+### DEBUG
 
-# Do this but get all the distinct values of colnames
-all_colnames <- unique(unlist(lapply(data_list, colnames)))
+# # Go through each of the data_list elements and print out the rownames
+# # distinct values
+# for (sheet_name in names(data_list)) {
+#   data_i <- data_list[[sheet_name]]
+#   # rownames(data_i) <- NULL
+#   # Convert to plain data.frame without row names
+#   data_i <- as.data.frame(data_i, row.names = NULL)
+#   unique_rownames_i <- unique(rownames(data_i))
+#   print(paste("Sheet:", sheet_name, "Rownames:", paste(unique_rownames_i, collapse = ", ")))
+# }
 
-# Save workbook
-saveWorkbook(wb, file = datasheet_filepath, overwrite = TRUE)
+
+### END DEBUG
+
+
+### Writing Loop
+# Here is where we'll go through our data_list and write each tab
+# wb <- createWorkbook()
+# for (sheet_name in names(data_list)) {
+#   data_i <- data_list[[sheet_name]]
+#   
+#   # Convert all columns to character to avoid any issues with data types in Excel
+#   data_i <- data_i %>%
+#     mutate(across(everything(), as.character))
+# 
+#   # Add worksheet
+#   addWorksheet(wb, sheet_name)
+# 
+#   # Write data to worksheet
+#   writeData(wb, sheet = sheet_name, x = data_i)
+# }
+# 
+# saveWorkbook(wb, file = datasheet_filepath, overwrite = TRUE)
 
 # Done
 
 
-# DEBUG
-# Let's attempt to do the sheet saving with just a single combo
 
+
+wb <- createWorkbook()
+
+for (sheet_name in names(data_list)) {
+  data_i <- data_list[[sheet_name]]
+  
+  # Convert all columns to character to avoid Excel type issues
+  data_i <- data_i %>% mutate(across(everything(), as.character))
+  
+  # Add worksheet
+  addWorksheet(wb, sheet_name)
+  
+  # Create a header row (here just using the sheet name, can add more info if needed)
+  header_text <- paste(sheet_name, "| Date: ________________ | Obs: __________________")
+  
+  # Write header row at row 1
+  writeData(wb, sheet = sheet_name, x = header_text, startCol = 1, startRow = 1)
+  
+  # Optional: style header row
+  header_style <- createStyle(
+    fontSize = 12,
+    textDecoration = "bold",
+    halign = "left"
+  )
+  addStyle(wb, sheet_name, header_style, rows = 1, cols = 1, gridExpand = TRUE)
+  
+  # Write the data starting from row 3 (leaving one row blank under header)
+  writeData(wb, sheet = sheet_name, x = data_i, startCol = 1, startRow = 3)
+  
+  # Optional: merge header across all columns
+  mergeCells(wb, sheet_name, cols = 1:ncol(data_i), rows = 1)
+}
+
+# Save workbook
+saveWorkbook(wb, file = datasheet_filepath, overwrite = TRUE)
 
