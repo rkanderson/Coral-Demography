@@ -132,7 +132,7 @@ data_2024_tidy %>% colnames()
 
 # Save data_2024_tidy
 # save to data_outputs/coral_data_update_tidy_2025.csv
-write_csv(data_2024_tidy, here("data_outputs", "coral_data_update_tidy_2024.csv"))
+write_csv(data_2024_tidy, here("data_outputs", "coral_data_tidy_2024_for_update.csv"))
 
 
 

@@ -9,11 +9,10 @@ library(here)
 
 # Load data
 # data_outputs/coral_tidy_2024.csv
-coral_df_tidy <- read_csv(here("data_outputs", "coral_tidy_2024.csv"))
+coral_df_tidy <- read_csv(here("data_outputs", "coral_tidy_2013-2023.csv"))
 
-# also grab
-# data_outputs/coral_data_update_tidy_2024.csv
-coral_df_update_tidy <- read_csv(here("data_outputs", "coral_data_update_tidy_2024.csv"))
+# also grab...
+coral_df_update_tidy <- read_csv(here("data_outputs", "coral_data_tidy_2024_for_update.csv"))
 
 
 
@@ -83,7 +82,7 @@ coral_df_tidy_combined <- bind_rows(coral_df_tidy, coral_df_update_tidy)
 # Save the combined data, overwriting the previous
 # data_outputs/coral_tidy_2024.csv
 
-write_csv(coral_df_tidy_combined, here("data_outputs", "coral_tidy_2024.csv"))
+write_csv(coral_df_tidy_combined, here("data_outputs", "coral_tidy_2013-2024.csv"))
 
 ```
 

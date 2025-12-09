@@ -17,9 +17,9 @@ project/
 │   ├── coral_raw_wide_2023_bad_and_duplicate_rows_removed.xlsx # Manually pre-cleaned input
 │   └── data_raw_2024_sheets/      # 2024 survey data (individual Excel sheets)
 ├── data_outputs/                  # Cleaned and processed data files
-│   ├── coral_clean_wide_human-friendly.xlsx  # Wide-format Excel (for manual inspection)
-│   ├── coral_tidy_2024.csv        # Tidy cleaned data (no dynamics)
-│   └── coral_tidy_2024_with_dynamics.csv # Tidy cleaned data with dynamic fields
+│   ├── coral_clean_wide_human-friendly_2013-2024.xlsx  # Wide-format Excel (for manual inspection)
+│   ├── coral_tidy_2013-2024.csv        # Tidy cleaned data (no dynamics)
+│   └── coral_tidy_dyn_2013-2024.csv # Tidy cleaned data with dynamic fields
 ├── explorations/                  # Exploratory R Markdown notebooks
 │   └── exX.Y.Z-<title>.Rmd        # Hierarchically numbered exploration files
 ├── figures/                       # Output plots and graphics

@@ -17,7 +17,7 @@ library(readxl)
 # We'll need to load all the data from these individual sheets and combine them with each other
 # in order to obtain a coral_df_raw
 
-RAW_DATA_FILEPATH <- here("data_raw", "coral_raw_wide_2023_bad_and_duplicate_rows_removed.xlsx")
+RAW_DATA_FILEPATH <- here("data_raw", "coral_raw_wide_2013-2023.xlsx")
 
 # Get the column names of each sheet in the file that matches the pattern "LTERXAA"
 sheets_habitats <- excel_sheets(RAW_DATA_FILEPATH) %>% 
@@ -153,7 +153,7 @@ for(coral in 1:nrow(coral_df)){
 }
 
 # write to file system
-write_csv(duplicate_rows_collection, here("data_outputs", "DEBUG_coral_duplicates.csv"))
+# write_csv(duplicate_rows_collection, here("data_outputs", "DEBUG_coral_duplicates.csv"))
 
 ```
 
@@ -292,7 +292,7 @@ coral_df_tidy_transect_renamed <- coral_df_tidy %>%
 Let's store this data file so that we can use it later.
 
 ```{r}
-write_csv(coral_df_tidy_transect_renamed, here("data_outputs", "coral_tidy_2024.csv"))
+write_csv(coral_df_tidy_transect_renamed, here("data_outputs", "coral_tidy_2013-2023.csv"))
 ```
 
 
