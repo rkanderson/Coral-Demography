@@ -288,11 +288,34 @@ for(i in 1:nrow(coral_ts)) {
 }
 
 ```
-l
+
+
+## Explicitly Noted MissingData
+
+For cases where the notes contain "unsampled" or "not sampled", we will set the missing_data dynamic to 1.
+
+```{r}
+# Loop through coral_ts
+for(i in 1:nrow(coral_ts)) {
+  notes <- coral_ts$notes_extracted[[i]]
+  
+  for (note in notes) {
+    if(is.na(note)) {
+      next
+    }
+    if(note == "unsampled" || note == "not sampled") {
+      coral_ts$missing_data[i] <- 1
+    }
+  }
+}
+```
+
 
 ### Vanishing Corals (Another Type of Death)
 
 There are some cases where a coral that was previously documented is no longer present. We will consider these corals as having died, and will set the death dynamic to 1 for these observations.
+
+Exception: if a coral is explicitly noted as "unsampled" or "not sampled", then the death dynamic won't be applied.
 
 ```{r}
 # Vanishing Logic
@@ -326,14 +349,31 @@ for(i in 1:nrow(coral_ts)) {
   coral_width <- suppressWarnings(as.numeric(coral_ts$width[i]))
   coral_height <- suppressWarnings(as.numeric(coral_ts$height[i]))
   
+  # Check if the notes contain "unsampled" or "not sampled"
+  noted_as_unsampled <- FALSE
+  notes <- coral_ts$notes_extracted[[i]]
+  for (note in notes) {
+    if(is.na(note)) {
+      next
+    }
+    if(note == "unsampled" || note == "not sampled") {
+      noted_as_unsampled <- TRUE
+      break
+    }
+  }
   
-  # Next if the coral has been encountered, hasn't been 
-  # confirmed dead via the comments or LWH values, and if 
-  # there is no current numerical data, it's safe to say 
+  # Next if the coral has been encountered, has NOT been 
+  # confirmed dead already via the comments or LWH values, 
+  # AND if there is no current numerical data, 
+  # AND if it hasn't been explicitly noted as 'not sampled' or 'unsampled',
+  # it's safe to say 
   # that it died that year.
-  if(coral_ts$coral_encountered[i]==TRUE &&
-       coral_ts$coral_died[i]==FALSE &&
-       is.na(coral_length) && is.na(coral_width) && is.na(coral_height)) {
+  if(coral_ts$coral_encountered[i] == TRUE &&
+       coral_ts$coral_died[i] == FALSE &&
+       is.na(coral_length) && 
+       is.na(coral_width) && 
+       is.na(coral_height) &&
+       noted_as_unsampled == FALSE) {
     # browser()
     coral_ts$death[i] <- 1
     # Update our vanished_coral vec
