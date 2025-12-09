@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 .DS_Store
+README.html
 
 # Ignore all files in the data_outputs and figures directories
 data_outputs/*
