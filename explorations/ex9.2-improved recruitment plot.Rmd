@@ -58,7 +58,8 @@ coral_colors <- c(
 - Then we'll sum dyn_recruitment for each group to get a raw count of recruits
 - Then we'll filter the resulting data frame to keep only transects that are named T01, T02, T03, or T04
 - Then we'll create a new column called recruitment_density which is recruitment divided by 5 (since each transect is 5 square meters)
-- (Then when we visualize, we can show separate graphs for each site/habitat combination, and add a regression line with confidence intervals)
+- (Then when we visualize, we can show separate graphs for each site/habitat combination, and add a regression line with confidence intervals).
+
 
 ```{r}
 recruitment_df <- coral_df %>% 
@@ -176,34 +177,89 @@ plot_recruitment_by_site_with_smooth("LTER5", "Poc")
 
 
 
-```{r plot recruitment OLD}
+```{r plot recruitment v3}
 
-# recruitment_df %>% 
-#   ggplot(aes(x = factor(year), y = recruitment, color = taxa)) +
-#   geom_line(aes(group = taxa)) +  # ensure lines connect within taxa
-#   geom_point() +
-#   facet_wrap(~site) +
-#   scale_x_discrete(breaks = seq(2013, 2024, by = 2)) +  # Set x-axis breaks every 4 years
-#   labs(
-#     title = "Recruitment by Year, Taxa, and Site",
-#     x = "Year",
-#     y = "Number of Recruits"
-#   ) +
-#   theme_minimal()
-# 
-# # Regenarate with coral color scheme
-# recruitment_df %>% 
-#   ggplot(aes(x = factor(year), y = recruitment, color = taxa)) +
-#   geom_line(aes(group = taxa)) +  # ensure lines connect within taxa
-#   geom_point() +
-#   facet_wrap(~site) +
-#   scale_x_discrete(breaks = seq(2013, 2024, by = 2)) +  # Set x-axis breaks every 4 years
-#   scale_color_manual(values = coral_colors) +  # Use custom coral colors
-#   labs(
-#     title = "Recruitment by Year, Taxa, and Site",
-#     x = "Year",
-#     y = "Number of Recruits"
-#   ) +
-#   theme_minimal()
+# Now we're going to define a function that takes in a site and habitat input
+# and then outputs a bar plot
+# the x will be the year
+# the y will be the mean recruit density
+# we'll facet_wrap by species
+# and there will be a standard error bar
+
+# First let's try this with just a LTER5 OR
+recruitment_df %>% 
+  filter(site == "LTER5", habitat == "OR") %>% 
+  # filter(taxa != "Mil") %>% 
+  group_by(year, taxa) %>% 
+  summarize(
+    mean_recruitment_density = mean(recruitment_density),
+    se_recruitment_density = sd(recruitment_density) / sqrt(n())
+  ) %>%
+  ggplot(aes(x = year, y = mean_recruitment_density, fill = taxa)) +
+  geom_bar(stat = "identity", position = position_dodge()) +
+  geom_errorbar(aes(ymin = mean_recruitment_density - se_recruitment_density,
+                    ymax = mean_recruitment_density + se_recruitment_density),
+                width = 0.2, position = position_dodge(0.9)) +
+  facet_wrap(~taxa, ncol = 2) +
+  scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +  # Set x-axis breaks every 2 years
+  scale_fill_manual(values = coral_colors) +
+  labs(
+    title = "Mean Recruitment Density at LTER5 OR",
+    x = "Year",
+    y = "Mean Recruitment Density (recruits per m²)"
+  ) +
+  theme_minimal()
+
 
 ```
+```{r}
+# Now let's make this a function
+plot_recruitment_barplot <- function(site_name, habitat_name) {
+  recruitment_df %>% 
+    filter(site == site_name, habitat == habitat_name) %>% 
+    group_by(year, taxa) %>% 
+    summarize(
+      mean_recruitment_density = mean(recruitment_density),
+      se_recruitment_density = sd(recruitment_density) / sqrt(n())
+    ) %>%
+    ggplot(aes(x = year, y = mean_recruitment_density, fill = taxa)) +
+    geom_bar(stat = "identity", position = position_dodge()) +
+    geom_errorbar(aes(ymin = mean_recruitment_density - se_recruitment_density,
+                      ymax = mean_recruitment_density + se_recruitment_density),
+                  width = 0.2, position = position_dodge(0.9)) +
+    facet_wrap(~taxa, ncol = 2) +
+    scale_x_continuous(breaks = seq(2013, 2024, by = 2)) +  # Set x-axis breaks every 2 years
+    scale_fill_manual(values = coral_colors) +
+    labs(
+      title = paste("Mean Recruitment Density at", site_name, habitat_name),
+      x = "Year",
+      y = "Mean Recruitment Density (recruits per m²)"
+    ) +
+    theme_minimal()
+}
+
+# Call the function for all combos of LTER1,2,4,5 and OR, BR
+plot_recruitment_barplot("LTER1", "OR")
+plot_recruitment_barplot("LTER1", "BR")
+plot_recruitment_barplot("LTER2", "OR")
+plot_recruitment_barplot("LTER2", "BR")
+plot_recruitment_barplot("LTER4", "OR")
+plot_recruitment_barplot("LTER4", "BR")
+plot_recruitment_barplot("LTER5", "OR")
+plot_recruitment_barplot("LTER5", "BR")
+
+# Do this in the body of a 4 loop and then save them as individual png files
+# to figures/recruitment_barplots_v3_SITE_HABITAT.png
+for (site in c("LTER1", "LTER2", "LTER4", "LTER5")) {
+  for (habitat in c("OR", "BR")) {
+    plot <- plot_recruitment_barplot(site, habitat)
+    ggsave(filename = here("figures", paste0("recruitment_barplot_v3_", site, "_", habitat, ".png")),
+           plot = plot,
+           width = 10,
+           height = 6)
+  }
+}
+
+```
+
+
