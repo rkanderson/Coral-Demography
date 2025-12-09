@@ -30,6 +30,13 @@ library(openxlsx)
 
 coral_df_tidy <- read_csv(here("data_outputs", "coral_tidy_2024_with_dynamics.csv"))
 
+# BAND-AID FIX for issue: There are some transects that are named with the letter O instead of a zero.
+# We'll correct these in here for now
+coral_df_tidy <- coral_df_tidy %>% 
+  mutate(
+    transect = str_replace_all(transect, "O", "0")
+  )
+
 
 # Now we're going to group the corals by coral_number
 # and then we're going to summarize each group by whether that group contains any single
@@ -39,10 +46,18 @@ coral_death_summary <- coral_df_tidy %>%
   group_by(coral_number) %>% 
   summarize(any_death = any(dyn_death == 1))
 
+
 # Now let's load our wide dataset
 # data_outputs/coral_clean_wide_2024.csv
 
 coral_df_wide <- read_csv(here("data_outputs", "coral_clean_wide_2024.csv"))
+
+# BAND-AID FIX again. This issue with some transects having an O instead of a zero persists
+# in the wide dataset, we'll fixt it here again.
+coral_df_wide <- coral_df_wide %>% 
+  mutate(
+    transect = str_replace_all(transect, "O", "0")
+  )
 
 # Now let's filter to only keep corals not confirmed dead
 # We'll do this by doing a left join on our wide dataset, and then filtering to only keep rows where any_death == FALSE.
@@ -53,11 +68,34 @@ coral_df_wide_no_dead <- coral_df_wide %>%
 # Now let's only keep the columns relevant for our data entry sheet.
 # We'll need to use the CURRENT_SURVEY_YEAR (at some point)
 # for now I'll just hardcode for 2024
+# coral_df_no_dead_selected_cols <- coral_df_wide_no_dead %>% 
+#   select(site, habitat, transect, taxa, x, y, z, length_2024, width_2024, height_2024, note_2024)
+
 coral_df_no_dead_selected_cols <- coral_df_wide_no_dead %>% 
-  select(site, habitat, transect, taxa, x, y, z, length_2024, width_2024, height_2024, note_2024)
+  select(site, habitat, transect, taxa, x, y, z,  # TEMP: Including 2023 as well for the unsampled 2024 plots
+         length_2023, width_2023, height_2023, note_2023,
+         length_2024, width_2024, height_2024, note_2024)
+
+
 
 
 # Now let's rename the columns to be more user-friendly
+# coral_df_no_dead_selected_cols <- coral_df_no_dead_selected_cols %>% 
+#   rename(
+#     Site = site,
+#     Hab = habitat,
+#     Tran = transect,
+#     Taxa = taxa,
+#     X = x,
+#     Y = y,
+#     Z = z,
+#     L24 = length_2024,
+#     W24 = width_2024,
+#     H24 = height_2024,
+#     Notes24 = note_2024
+#   )
+
+# Temporary for unsampled transects, including 2023 as well
 coral_df_no_dead_selected_cols <- coral_df_no_dead_selected_cols %>% 
   rename(
     Site = site,
@@ -67,6 +105,10 @@ coral_df_no_dead_selected_cols <- coral_df_no_dead_selected_cols %>%
     X = x,
     Y = y,
     Z = z,
+    L23 = length_2023,
+    W23 = width_2023,
+    H23 = height_2023,
+    Notes23 = note_2023,
     L24 = length_2024,
     W24 = width_2024,
     H24 = height_2024,
@@ -137,22 +179,6 @@ for (i in 1:nrow(unique_combos)) {
 
 }
 
-### DEBUG
-
-# # Go through each of the data_list elements and print out the rownames
-# # distinct values
-# for (sheet_name in names(data_list)) {
-#   data_i <- data_list[[sheet_name]]
-#   # rownames(data_i) <- NULL
-#   # Convert to plain data.frame without row names
-#   data_i <- as.data.frame(data_i, row.names = NULL)
-#   unique_rownames_i <- unique(rownames(data_i))
-#   print(paste("Sheet:", sheet_name, "Rownames:", paste(unique_rownames_i, collapse = ", ")))
-# }
-
-
-### END DEBUG
-
 
 ### Writing Loop
 # Here is where we'll go through our data_list and write each tab
@@ -177,10 +203,12 @@ for (i in 1:nrow(unique_combos)) {
 
 
 
-
 wb <- createWorkbook()
 
-for (sheet_name in names(data_list)) {
+# Create a vector of the names(data_list) in ascending alphanumeric order
+sheet_names_sorted <- sort(names(data_list))
+
+for (sheet_name in sheet_names_sorted) {
   data_i <- data_list[[sheet_name]]
   
   # Convert all columns to character to avoid Excel type issues
