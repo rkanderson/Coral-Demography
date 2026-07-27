@@ -26,9 +26,9 @@ library(openxlsx)
 
 
 # Load the data (we're going to start off with the tidy data with dynamics)
-# data_outputs/coral_tidy_2024_with_dynamics.csv
+# data_outputs/coral_tidy_dyn_2013-2024.csv
 
-coral_df_tidy <- read_csv(here("data_outputs", "coral_tidy_2024_with_dynamics.csv"))
+coral_df_tidy <- read_csv(here("data_outputs", "coral_tidy_dyn_2013-2024.csv"))
 
 # BAND-AID FIX for issue: There are some transects that are named with the letter O instead of a zero.
 # We'll correct these in here for now
@@ -48,9 +48,9 @@ coral_death_summary <- coral_df_tidy %>%
 
 
 # Now let's load our wide dataset
-# data_outputs/coral_clean_wide_2024.csv
+# data_outputs/coral_clean_wide_2013-2024.csv
 
-coral_df_wide <- read_csv(here("data_outputs", "coral_clean_wide_2024.csv"))
+coral_df_wide <- read_csv(here("data_outputs", "coral_clean_wide_2013-2024.csv"))
 
 # BAND-AID FIX again. This issue with some transects having an O instead of a zero persists
 # in the wide dataset, we'll fixt it here again.
