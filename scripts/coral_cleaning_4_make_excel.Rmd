@@ -14,7 +14,7 @@ library(here)
 library(openxlsx)
 
 # Load data
-coral_clean_wide <- read_csv(here("data_outputs", "coral_clean_wide_2013-2024.csv"))
+coral_clean_wide <- read_csv(here("data_outputs", "coral_clean_wide_2013-2025.csv"))
 ```
 
 ## Col Name Changes
@@ -57,10 +57,10 @@ for(i in 1:nrow(site_habitat)){
 }
 
 # Save the excel file (needed for collecting all the sheet names)
-saveWorkbook(wb, file = here("data_outputs", "coral_clean_wide_human-friendly_2013-2024.xlsx"), overwrite = TRUE)
+saveWorkbook(wb, file = here("data_outputs", "coral_clean_wide_human-friendly_2013-2025.xlsx"), overwrite = TRUE)
 
 # Get all the sheetnames as a vector
-sheet_names <- getSheetNames(here("data_outputs", "coral_clean_wide_human-friendly_2013-2024.xlsx"))
+sheet_names <- getSheetNames(here("data_outputs", "coral_clean_wide_human-friendly_2013-2025.xlsx"))
 
 
 ```
@@ -170,7 +170,7 @@ To make this easy to read, a set of shortened names will be used for columns
 
 ## Save the Excel Sheet
 ```{r}
-saveWorkbook(wb, file = here("data_outputs", "coral_clean_wide_human-friendly.xlsx"), overwrite = TRUE)
+saveWorkbook(wb, file = here("data_outputs", "coral_clean_wide_human-friendly_2013-2025.xlsx"), overwrite = TRUE)
 ```
 
 

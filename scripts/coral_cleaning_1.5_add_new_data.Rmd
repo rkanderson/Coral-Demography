@@ -12,7 +12,9 @@ library(here)
 coral_df_tidy <- read_csv(here("data_outputs", "coral_tidy_2013-2023.csv"))
 
 # also grab...
-coral_df_update_tidy <- read_csv(here("data_outputs", "coral_data_tidy_2024_for_update.csv"))
+coral_df_update_tidy_2024 <- read_csv(here("data_outputs", "coral_data_tidy_2024_for_update.csv"))
+coral_df_update_tidy_2025 <- read_csv(here("data_outputs", "coral_data_tidy_2025_for_update.csv"))
+
 
 
 
@@ -23,7 +25,14 @@ coral_df_update_tidy <- read_csv(here("data_outputs", "coral_data_tidy_2024_for_
 # Convert length, width, and height of the update df to be a str type
 # this is because is because the current tidy data is treated as a string to presereve
 # manually entered in Na values and UK values
-coral_df_update_tidy <- coral_df_update_tidy %>% 
+coral_df_update_tidy_2024 <- coral_df_update_tidy_2024 %>% 
+  mutate(
+    length = as.character(length),
+    width = as.character(width),
+    height = as.character(height)
+  )
+
+coral_df_update_tidy_2025 <- coral_df_update_tidy_2025 %>% 
   mutate(
     length = as.character(length),
     width = as.character(width),
@@ -31,7 +40,7 @@ coral_df_update_tidy <- coral_df_update_tidy %>%
   )
 
 # Bind the two together
-coral_df_tidy_combined <- bind_rows(coral_df_tidy, coral_df_update_tidy)
+coral_df_tidy_combined <- bind_rows(coral_df_tidy, coral_df_update_tidy_2024, coral_df_update_tidy_2025)
 
 
 ```
@@ -82,7 +91,7 @@ coral_df_tidy_combined <- bind_rows(coral_df_tidy, coral_df_update_tidy)
 # Save the combined data, overwriting the previous
 # data_outputs/coral_tidy_2024.csv
 
-write_csv(coral_df_tidy_combined, here("data_outputs", "coral_tidy_2013-2024.csv"))
+write_csv(coral_df_tidy_combined, here("data_outputs", "coral_tidy_2013-2025.csv"))
 
 ```
 

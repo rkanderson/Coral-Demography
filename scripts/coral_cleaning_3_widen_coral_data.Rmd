@@ -10,7 +10,7 @@ library(here)
 library(openxlsx)
 
 # Load data
-coral_df <- read_csv(here("data_outputs", "coral_tidy_dyn_2013-2024.csv"))
+coral_df <- read_csv(here("data_outputs", "coral_tidy_dyn_2013-2025.csv"))
 ```
 
 ## Create aggregated 'dynamic' field
@@ -128,6 +128,6 @@ We would convert
 
 ## Save the data
 ```{r}
-write_csv(coral_df_wider, here("data_outputs", "coral_clean_wide_2013-2024.csv"))
+write_csv(coral_df_wider, here("data_outputs", "coral_clean_wide_2013-2025.csv"))
 ```
 
