@@ -28,7 +28,7 @@ library(openxlsx)
 # Load the data (we're going to start off with the tidy data with dynamics)
 # data_outputs/coral_tidy_dyn_2013-2024.csv
 
-coral_df_tidy <- read_csv(here("data_outputs", "coral_tidy_dyn_2013-2024.csv"))
+coral_df_tidy <- read_csv(here("data_outputs", "coral_tidy_dyn_2013-2025.csv"))
 
 # BAND-AID FIX for issue: There are some transects that are named with the letter O instead of a zero.
 # We'll correct these in here for now
@@ -50,7 +50,7 @@ coral_death_summary <- coral_df_tidy %>%
 # Now let's load our wide dataset
 # data_outputs/coral_clean_wide_2013-2024.csv
 
-coral_df_wide <- read_csv(here("data_outputs", "coral_clean_wide_2013-2024.csv"))
+coral_df_wide <- read_csv(here("data_outputs", "coral_clean_wide_2013-2025.csv"))
 
 # BAND-AID FIX again. This issue with some transects having an O instead of a zero persists
 # in the wide dataset, we'll fixt it here again.
@@ -72,31 +72,20 @@ coral_df_wide_no_dead <- coral_df_wide %>%
 #   select(site, habitat, transect, taxa, x, y, z, length_2024, width_2024, height_2024, note_2024)
 
 coral_df_no_dead_selected_cols <- coral_df_wide_no_dead %>% 
-  select(site, habitat, transect, taxa, x, y, z,  # TEMP: Including 2023 as well for the unsampled 2024 plots
-         length_2023, width_2023, height_2023, note_2023,
-         length_2024, width_2024, height_2024, note_2024)
+  select(site, habitat, transect, taxa, x, y, z,
+         length_2025, width_2025, height_2025, note_2025)
 
+
+# TEMP: Filtering out Plots (Keeping Transects)
+# As of 2025, the experiment has changed. Only transects are being monitored, no more plots
+# as such, we'll remove any row that have a transect value that starts with P
+coral_df_no_dead_selected_cols <- coral_df_no_dead_selected_cols %>% 
+  filter(!str_starts(transect, "P"))
 
 
 
 # Now let's rename the columns to be more user-friendly
-# coral_df_no_dead_selected_cols <- coral_df_no_dead_selected_cols %>% 
-#   rename(
-#     Site = site,
-#     Hab = habitat,
-#     Tran = transect,
-#     Taxa = taxa,
-#     X = x,
-#     Y = y,
-#     Z = z,
-#     L24 = length_2024,
-#     W24 = width_2024,
-#     H24 = height_2024,
-#     Notes24 = note_2024
-#   )
-
-# Temporary for unsampled transects, including 2023 as well
-coral_df_no_dead_selected_cols <- coral_df_no_dead_selected_cols %>% 
+coral_df_no_dead_selected_cols <- coral_df_no_dead_selected_cols %>%
   rename(
     Site = site,
     Hab = habitat,
@@ -105,41 +94,50 @@ coral_df_no_dead_selected_cols <- coral_df_no_dead_selected_cols %>%
     X = x,
     Y = y,
     Z = z,
-    L23 = length_2023,
-    W23 = width_2023,
-    H23 = height_2023,
-    Notes23 = note_2023,
-    L24 = length_2024,
-    W24 = width_2024,
-    H24 = height_2024,
-    Notes24 = note_2024
+    L25 = length_2025,
+    W25 = width_2025,
+    H25 = height_2025,
+    Notes25 = note_2025
   )
+
+# To avoid formatting annoyances, convert X Y Z and L25, W25, H25 to numeric
+coral_df_no_dead_selected_cols <- coral_df_no_dead_selected_cols %>% 
+  mutate(
+    X = as.numeric(X),
+    Y = as.numeric(Y),
+    Z = as.numeric(Z),
+    L25 = as.numeric(L25),
+    W25 = as.numeric(W25),
+    H25 = as.numeric(H25)
+  )
+
 
 
 # Little nitpick, many of the Notes24 values contain a comma separated list containing NA
 # (This is an artifact from a previous operation)
 # let's remove these for the datasheet by splitting Notes24 by comma, filtering out "NA" string,
 # and then pasting back together
-coral_df_no_dead_selected_cols <- coral_df_no_dead_selected_cols %>% 
-  mutate(
-    Notes24 = sapply(Notes24, function(x) {
-      notes_split <- unlist(strsplit(x, ","))
-      notes_filtered <- notes_split[notes_split != "NA"]
-      notes_pasted <- paste(notes_filtered, collapse = ", ")
-      return(notes_pasted)
-    })
-  )
+# coral_df_no_dead_selected_cols <- coral_df_no_dead_selected_cols %>% 
+#   mutate(
+#     Notes24 = sapply(Notes24, function(x) {
+#       notes_split <- unlist(strsplit(x, ","))
+#       notes_filtered <- notes_split[notes_split != "NA"]
+#       notes_pasted <- paste(notes_filtered, collapse = ", ")
+#       return(notes_pasted)
+#     })
+#   )
 
 
 # Now we'll add some blank fields for data entry for the coming survey year
 # (2025).
 coral_df_for_datasheet <- coral_df_no_dead_selected_cols %>% 
   mutate(
-    L25 = "",
-    W25 = "",
-    H25 = "",
-    Notes25 = ""
+    L26 = "",
+    W26 = "",
+    H26 = "",
+    Notes26 = ""
   )
+
 
 
 
@@ -148,7 +146,7 @@ coral_df_for_datasheet <- coral_df_no_dead_selected_cols %>%
 # The title of each tab should be in the format Site_Hab_Tran
 
 # Save to Excel with separate tabs
-datasheet_filepath <- here("data_outputs", "coral_data_entry_datasheet_2025.xlsx")
+datasheet_filepath <- here("data_outputs", "coral_data_entry_datasheet_2026.xlsx")
 
 # Get unique combinations of Site, Hab, Tran
 unique_combos <- coral_df_for_datasheet %>%
