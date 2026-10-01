@@ -6,6 +6,10 @@
 .DS_Store
 README.html
 
+# Python artifacts
+*.pyc
+__pycache__/
+
 # Ignore all files in the data_outputs and figures directories
 data_outputs/*
 data_raw/*
