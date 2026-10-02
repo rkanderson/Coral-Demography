@@ -11,68 +11,58 @@ from pathlib import Path
 
 import pandas as pd
 
-YEAR = 2025
+YEARS = [2025]
 
 script_dir = Path(__file__).resolve().parent
-raw_data_path = str(script_dir / ".." / "data_raw" / "coral_datasheets_2025.xlsx")
 
-with pd.ExcelFile(raw_data_path) as workbook:
-    sheet_names = list(dict.fromkeys(workbook.sheet_names))  # unique, original order
+tidied_data_list = []
 
-    # create a list to hold the tidied data for each sheet
-    tidied_data_list = []
+for year in YEARS:
+    raw_data_path = script_dir / ".." / "data_raw" / f"coral_datasheets_{year}.xlsx"
 
-    for sheet_name in sheet_names:
-        sheet_data = pd.read_excel(workbook, sheet_name=sheet_name, header=2)
+    with pd.ExcelFile(raw_data_path) as workbook:
+        sheet_names = list(dict.fromkeys(workbook.sheet_names))  # unique, original order
 
-        # breakpoint()
-        # select the following columns:
-        # Taxa	X	Y	Z	L25	W25	H25	Notes25
-        current_year = str(YEAR)[-2:]
-        expected_columns = [
-            "Taxa", "X", "Y", "Z",
-            f"L{current_year}", f"W{current_year}", f"H{current_year}", f"Notes{current_year}"
-        ]
+        for sheet_name in sheet_names:
+            sheet_data = pd.read_excel(workbook, sheet_name=sheet_name, header=2)
 
-        sheet_data = sheet_data[expected_columns]
+            # Select the columns for this year's measurements.
+            current_year = str(year)[-2:]
+            expected_columns = [
+                "Taxa", "X", "Y", "Z",
+                f"L{current_year}", f"W{current_year}", f"H{current_year}", f"Notes{current_year}"
+            ]
+            sheet_data = sheet_data[expected_columns]
 
+            wide = sheet_data.copy()
+            wide["_row_id"] = range(len(wide))
 
-        wide = sheet_data.copy()
-        wide["_row_id"] = range(len(wide))
-
-        tidy = (
-            pd.wide_to_long(
-                wide,
-                stubnames=["L", "W", "H", "Notes"],
-                i="_row_id",
-                j="year",
-                sep="",
-                suffix=r"\d+",
+            tidy = (
+                pd.wide_to_long(
+                    wide,
+                    stubnames=["L", "W", "H", "Notes"],
+                    i="_row_id",
+                    j="year",
+                    sep="",
+                    suffix=r"\d+",
+                )
+                .reset_index()
+                .rename(columns={"L": "length", "W": "width", "H": "height", "Notes": "note"})
             )
-            .reset_index()
-            .rename(columns={"L": "length", "W": "width", "H": "height", "Notes": "note"})
-        )
 
-        tidy["year"] += 2000  # 24 -> 2024, 25 -> 2025
-        tidy = tidy.drop(columns="_row_id")
+            tidy["year"] += 2000  # 24 -> 2024, 25 -> 2025
+            tidy = tidy.drop(columns="_row_id")
 
-        # rename other columns to lowercase:
-        tidy = tidy.rename(columns={
-            "Taxa": "taxa",
-            "X": "x",
-            "Y": "y",
-            "Z": "z"
-        })
+            # Rename other columns to lowercase.
+            tidy = tidy.rename(columns={"Taxa": "taxa", "X": "x", "Y": "y", "Z": "z"})
 
-        # Finally add site, habitat, and transect columns by parsing the sheet_name
-        # sheet names should follow the pattern "Site_Hab_Tran"
-        site, habitat, transect = sheet_name.split("_")
-        tidy["site"] = site
-        tidy["habitat"] = habitat
-        tidy["transect"] = transect
+            # Sheet names should follow the pattern "Site_Hab_Tran".
+            site, habitat, transect = sheet_name.split("_")
+            tidy["site"] = site
+            tidy["habitat"] = habitat
+            tidy["transect"] = transect
 
-        # append the tidied data for this sheet to a list for later concatenation
-        tidied_data_list.append(tidy)
+            tidied_data_list.append(tidy)
 
 
 # concatenate all the tidied data into a single DataFrame
@@ -91,7 +81,10 @@ final_tidied_data = final_tidied_data[
 
 
 # save the final tidied data to a CSV file
-output_path = str(script_dir / ".." / "data_outputs" / f"coral_data_tidy_{YEAR}_for_update.csv")
+output_path = str(
+    script_dir / ".." / "data_outputs" /
+    f"coral_data_tidy_{YEARS[0]}_to_{YEARS[-1]}_for_update.csv"
+)
 final_tidied_data.to_csv(output_path, index=False)
 
 
